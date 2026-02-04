@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PayApp</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>PayApp</h1>
+
+    <!-- Login/Register -->
+    <div id="login-section">
+      <h2>Login / Register</h2>
+      <input type="email" id="email" placeholder="Email" />
+      <input type="password" id="password" placeholder="Password" />
+      <button id="login-btn">Login</button>
+      <p id="login-msg"></p>
+    </div>
+
+    <!-- Client Section -->
+    <div id="client-section" style="display:none;">
+      <h2>Add Client</h2>
+      <input type="text" id="fullName" placeholder="Full Name" />
+      <input type="email" id="clientEmail" placeholder="Email" />
+      <input type="text" id="contactNumber" placeholder="Contact Number" />
+      <input type="text" id="dsjNumber" placeholder="DSJ Number" />
+      <button id="add-client-btn">Add Client</button>
+      <p id="client-msg"></p>
+      
+      <h2>Borrow Money</h2>
+      <input type="number" id="amount" placeholder="Amount" />
+      <input type="text" id="note" placeholder="Note" />
+      <select id="client-select"></select>
+      <button id="borrow-btn">Borrow</button>
+      <p id="borrow-msg"></p>
+
+      <h2>Clients List (Admin)</h2>
+      <ul id="clients-list"></ul>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
