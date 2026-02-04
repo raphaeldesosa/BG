@@ -5,76 +5,45 @@ const { Pool } = require("pg");
 
 const app = express();
 
-// ------------------- MIDDLEWARE -------------------
 app.use(cors());
 app.use(express.json());
 
-// Serve frontend static files first
+// Serve frontend
 app.use(express.static(path.join(__dirname, "public")));
-
-// Serve index.html for root and any unknown routes (for single-page frontend)
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ------------------- DATABASE -------------------
+// Database connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// ------------------- API ROUTES -------------------
+// Admin token
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "supersecret123";
 
-// Test DB connection
-app.get("/db-test", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT NOW()");
-    res.json({ success: true, time: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// ------------------- ROUTES -------------------
 
-// Login / register user
-app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
-
-  try {
-    const userResult = await pool.query(
-      "SELECT * FROM users WHERE email=$1",
-      [email]
-    );
-    let user = userResult.rows[0];
-
-    if (!user) {
-      const insertResult = await pool.query(
-        "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
-        [email, password]
-      );
-      user = insertResult.rows[0];
-    } else if (user.password !== password) {
-      return res.status(401).json({ error: "Wrong password" });
-    }
-
-    res.json({ userId: user.id, isAdmin: user.is_admin });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Add client
+// Add member (auto $100 borrow, due date 2 months later)
 app.post("/client", async (req, res) => {
   const { fullName, email, contactNumber, dsjNumber } = req.body;
   if (!fullName || !email || !contactNumber || !dsjNumber) {
-    return res.status(400).json({ error: "All client fields required" });
+    return res.status(400).json({ error: "All fields required" });
   }
+
+  const borrowAmount = 100; // fixed borrow
+  const borrowDate = new Date();
+  const dueDate = new Date();
+  dueDate.setMonth(dueDate.getMonth() + 2); // 2 months from now
 
   try {
     const result = await pool.query(
-      `INSERT INTO clients (full_name, email, contact_number, dsj_number)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [fullName, email, contactNumber, dsjNumber]
+      `INSERT INTO clients 
+       (full_name, email, contact_number, dsj_number, borrow_amount, borrow_date, due_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [fullName, email, contactNumber, dsjNumber, borrowAmount, borrowDate, dueDate]
     );
     res.json({ client: result.rows[0] });
   } catch (err) {
@@ -82,29 +51,17 @@ app.post("/client", async (req, res) => {
   }
 });
 
-// Borrow money
-app.post("/borrow", async (req, res) => {
-  const { userId, clientId, amount, note } = req.body;
-  if (!userId || !clientId || !amount) {
-    return res.status(400).json({ error: "User, client, and amount required" });
+// Get all clients (admin only)
+app.get("/clients", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) {
+    return res.status(403).json({ error: "Unauthorized" });
   }
 
   try {
     const result = await pool.query(
-      `INSERT INTO transactions (user_id, client_id, amount, note)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [userId, clientId, amount, note]
+      "SELECT id, full_name, email, contact_number, dsj_number, borrow_amount, borrow_date, due_date FROM clients ORDER BY created_at DESC"
     );
-    res.json({ transaction: result.rows[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get all clients
-app.get("/clients", async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM clients ORDER BY created_at DESC");
     res.json({ clients: result.rows });
   } catch (err) {
     res.status(500).json({ error: err.message });
