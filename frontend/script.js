@@ -1,4 +1,4 @@
-const API = "https://bg-mrwf.onrender.com"; // <-- Replace with your Render backend URL
+const API = "https://bg-1-dasx.onrender.com/"; // <-- Replace with your Render backend URL
 
 let userId = null;
 let isAdmin = false;
