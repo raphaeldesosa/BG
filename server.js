@@ -78,3 +78,22 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+
+// Delete member (admin only)
+app.delete("/client/:id", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+
+  const clientId = req.params.id;
+
+  try {
+    await pool.query("DELETE FROM clients WHERE id = $1", [clientId]);
+    res.json({ success: true, message: "Member deleted" });
+  } catch (err) {
+    console.error("Error deleting client:", err);
+    res.status(500).json({ error: "Database error" });
+  }
+});

@@ -124,3 +124,39 @@ async function loadClients() {
     console.error(err);
   }
 }
+
+data.clients.forEach(client => {
+  const dueDate = new Date(client.due_date);
+  const today = new Date();
+  const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+  const alertText = diffDays <= 7 ? " ⚠ Due soon!" : "";
+
+  const li = document.createElement("li");
+  li.innerText = `${client.full_name} | ${client.dsj_number} | ${client.contact_number} | ${client.email} | Borrowed $${client.borrow_amount} | Due: ${dueDate.toLocaleDateString()}${alertText}`;
+
+  // Add Delete button
+  const delBtn = document.createElement("button");
+  delBtn.innerText = "Delete";
+  delBtn.style.marginLeft = "10px";
+  delBtn.addEventListener("click", async () => {
+    if (!confirm(`Delete ${client.full_name}?`)) return;
+    try {
+      const res = await fetch(`${API}/client/${client.id}`, {
+        method: "DELETE",
+        headers: { "x-admin-token": ADMIN_TOKEN }
+      });
+      if (res.ok) {
+        loadClients(); // refresh list
+      } else {
+        const text = await res.text();
+        console.error("Delete failed:", text);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
+  li.appendChild(delBtn);
+  list.appendChild(li);
+});
+
