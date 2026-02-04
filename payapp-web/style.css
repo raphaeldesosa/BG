@@ -1,0 +1,48 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f2f2f2;
+  padding: 40px;
+}
+
+h1 {
+  color: #333;
+}
+
+h2 {
+  margin-top: 30px;
+}
+
+input {
+  display: block;
+  margin: 8px 0;
+  padding: 8px;
+  width: 250px;
+}
+
+button {
+  padding: 8px 12px;
+  margin-top: 10px;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+
+#loginBox, #app {
+  background: #fff;
+  padding: 20px;
+  border-radius: 6px;
+  width: 300px;
+}
+
+.logout {
+  margin-top: 30px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+}
+
+ul {
+  padding-left: 20px;
+}
