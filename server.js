@@ -8,34 +8,29 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve frontend
-app.use(express.static(path.join(__dirname, "public")));
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// Database connection
+// ------------------- DATABASE -------------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
 
-// Admin token
+// ------------------- ADMIN TOKEN -------------------
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "supersecret123";
 
-// ------------------- ROUTES -------------------
+// ------------------- API ROUTES -------------------
 
 // Add member (auto $100 borrow, due date 2 months later)
 app.post("/client", async (req, res) => {
   const { fullName, email, contactNumber, dsjNumber } = req.body;
+
   if (!fullName || !email || !contactNumber || !dsjNumber) {
     return res.status(400).json({ error: "All fields required" });
   }
 
-  const borrowAmount = 100; // fixed borrow
+  const borrowAmount = 100;
   const borrowDate = new Date();
   const dueDate = new Date();
-  dueDate.setMonth(dueDate.getMonth() + 2); // 2 months from now
+  dueDate.setMonth(dueDate.getMonth() + 2); // 2 months
 
   try {
     const result = await pool.query(
@@ -47,7 +42,8 @@ app.post("/client", async (req, res) => {
     );
     res.json({ client: result.rows[0] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error inserting client:", err);
+    res.status(500).json({ error: "Database error" });
   }
 });
 
@@ -64,8 +60,17 @@ app.get("/clients", async (req, res) => {
     );
     res.json({ clients: result.rows });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Error fetching clients:", err);
+    res.status(500).json({ error: "Database error" });
   }
+});
+
+// ------------------- STATIC FRONTEND -------------------
+app.use(express.static(path.join(__dirname, "public")));
+
+// Catch-all route (must be last!)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // ------------------- START SERVER -------------------

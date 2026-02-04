@@ -1,6 +1,6 @@
 const API = ""; // same origin
 const ADMIN_CREDENTIALS = { username: "adminuser", password: "adminpass" };
-const ADMIN_TOKEN = "supersecret123"; // must match backend
+const ADMIN_TOKEN = "supersecret123";
 
 // ---------------- Page navigation ----------------
 const landing = document.getElementById("landing-page");
@@ -8,7 +8,6 @@ const memberPage = document.getElementById("member-page");
 const adminPage = document.getElementById("admin-page");
 const adminView = document.getElementById("admin-view");
 
-// Buttons
 document.getElementById("member-btn").addEventListener("click", () => {
   landing.style.display = "none";
   memberPage.style.display = "block";
@@ -52,27 +51,30 @@ document.getElementById("submit-member").addEventListener("click", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fullName, contactNumber, email, dsjNumber })
     });
-    const data = await res.json();
-    if (res.ok) {
-      document.getElementById("member-msg").innerText = `Member registered! Borrowed $100. Due: ${new Date(data.client.due_date).toLocaleDateString()}`;
 
-      // Notify if due date is within 7 days
-      const due = new Date(data.client.due_date);
-      const today = new Date();
-      const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
-      if (diffDays <= 7) {
-        document.getElementById("member-msg").innerText += " ⚠ Your payment is due soon!";
-      }
-
-      // Clear form
-      document.getElementById("fullName").value = "";
-      document.getElementById("contactNumber").value = "";
-      document.getElementById("email").value = "";
-      document.getElementById("dsjNumber").value = "";
-    } else {
-      document.getElementById("member-msg").innerText = data.error;
+    if (!res.ok) {
+      const text = await res.text(); // capture HTML error if any
+      console.error("Error response:", text);
+      document.getElementById("member-msg").innerText = "Error submitting member";
+      return;
     }
+
+    const data = await res.json();
+    const due = new Date(data.client.due_date);
+    const today = new Date();
+    const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+
+    document.getElementById("member-msg").innerText = 
+      `Member registered! Borrowed $100. Due: ${due.toLocaleDateString()}` +
+      (diffDays <= 7 ? " ⚠ Your payment is due soon!" : "");
+
+    document.getElementById("fullName").value = "";
+    document.getElementById("contactNumber").value = "";
+    document.getElementById("email").value = "";
+    document.getElementById("dsjNumber").value = "";
+
   } catch (err) {
+    console.error(err);
     document.getElementById("member-msg").innerText = err.message;
   }
 });
@@ -97,6 +99,13 @@ async function loadClients() {
     const res = await fetch(`${API}/clients`, {
       headers: { "x-admin-token": ADMIN_TOKEN }
     });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Admin fetch error:", text);
+      return;
+    }
+
     const data = await res.json();
     const list = document.getElementById("clients-list");
 
@@ -112,6 +121,6 @@ async function loadClients() {
       list.appendChild(li);
     });
   } catch (err) {
-    console.log(err);
+    console.error(err);
   }
 }
