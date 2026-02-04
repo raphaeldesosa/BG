@@ -1,23 +1,27 @@
-// server.js
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 const { Pool } = require("pg");
 const app = express();
 
-// ==================== MIDDLEWARE ====================
 app.use(cors());
-app.use(express.json()); // parse JSON
-app.use(express.urlencoded({ extended: true })); // parse form data just in case
+app.use(express.json());
 
-// ==================== POSTGRES CONNECTION ====================
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, "public")));
+
+// Serve index.html on root
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ==================== ROUTES ====================
+// ------------------- DATABASE -------------------
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
+// ------------------- ROUTES -------------------
 
 // Test DB connection
 app.get("/db-test", async (req, res) => {
@@ -31,10 +35,8 @@ app.get("/db-test", async (req, res) => {
 
 // Login / register user
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body || {};
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password required" });
-  }
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: "Email and password required" });
 
   try {
     const userResult = await pool.query(
@@ -44,7 +46,6 @@ app.post("/login", async (req, res) => {
     let user = userResult.rows[0];
 
     if (!user) {
-      // register new user
       const insertResult = await pool.query(
         "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
         [email, password]
@@ -62,9 +63,9 @@ app.post("/login", async (req, res) => {
 
 // Add client
 app.post("/client", async (req, res) => {
-  const { fullName, email, contactNumber, dsjNumber } = req.body || {};
+  const { fullName, email, contactNumber, dsjNumber } = req.body;
   if (!fullName || !email || !contactNumber || !dsjNumber) {
-    return res.status(400).json({ error: "All client fields are required" });
+    return res.status(400).json({ error: "All client fields required" });
   }
 
   try {
@@ -81,16 +82,16 @@ app.post("/client", async (req, res) => {
 
 // Borrow money
 app.post("/borrow", async (req, res) => {
-  const { userId, clientId, amount, note } = req.body || {};
+  const { userId, clientId, amount, note } = req.body;
   if (!userId || !clientId || !amount) {
-    return res.status(400).json({ error: "User, client, and amount are required" });
+    return res.status(400).json({ error: "User, client, and amount required" });
   }
 
   try {
     const result = await pool.query(
       `INSERT INTO transactions (user_id, client_id, amount, note)
        VALUES ($1, $2, $3, $4) RETURNING *`,
-      [userId, clientId, amount, note || ""]
+      [userId, clientId, amount, note]
     );
     res.json({ transaction: result.rows[0] });
   } catch (err) {
@@ -108,7 +109,7 @@ app.get("/clients", async (req, res) => {
   }
 });
 
-// ==================== START SERVER ====================
+// ------------------- START SERVER -------------------
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
