@@ -4,12 +4,14 @@ const cors = require("cors");
 const { Pool } = require("pg");
 const app = express();
 
+// ==================== MIDDLEWARE ====================
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // parse JSON
+app.use(express.urlencoded({ extended: true })); // parse form data just in case
 
-// Postgres connection (Render DB)
+// ==================== POSTGRES CONNECTION ====================
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, // Make sure this is set in Render
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
@@ -29,7 +31,11 @@ app.get("/db-test", async (req, res) => {
 
 // Login / register user
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password required" });
+  }
+
   try {
     const userResult = await pool.query(
       "SELECT * FROM users WHERE email=$1",
@@ -56,7 +62,11 @@ app.post("/login", async (req, res) => {
 
 // Add client
 app.post("/client", async (req, res) => {
-  const { fullName, email, contactNumber, dsjNumber } = req.body;
+  const { fullName, email, contactNumber, dsjNumber } = req.body || {};
+  if (!fullName || !email || !contactNumber || !dsjNumber) {
+    return res.status(400).json({ error: "All client fields are required" });
+  }
+
   try {
     const result = await pool.query(
       `INSERT INTO clients (full_name, email, contact_number, dsj_number)
@@ -71,12 +81,16 @@ app.post("/client", async (req, res) => {
 
 // Borrow money
 app.post("/borrow", async (req, res) => {
-  const { userId, clientId, amount, note } = req.body;
+  const { userId, clientId, amount, note } = req.body || {};
+  if (!userId || !clientId || !amount) {
+    return res.status(400).json({ error: "User, client, and amount are required" });
+  }
+
   try {
     const result = await pool.query(
       `INSERT INTO transactions (user_id, client_id, amount, note)
        VALUES ($1, $2, $3, $4) RETURNING *`,
-      [userId, clientId, amount, note]
+      [userId, clientId, amount, note || ""]
     );
     res.json({ transaction: result.rows[0] });
   } catch (err) {

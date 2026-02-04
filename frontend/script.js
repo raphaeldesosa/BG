@@ -3,10 +3,15 @@ const API = "https://your-backend-name.onrender.com"; // <-- Replace with your R
 let userId = null;
 let isAdmin = false;
 
-// Login/Register
+// ----------------- LOGIN / REGISTER -----------------
 document.getElementById("login-btn").addEventListener("click", async () => {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  if (!email || !password) {
+    document.getElementById("login-msg").innerText = "Email and password required";
+    return;
+  }
 
   try {
     const res = await fetch(`${API}/login`, {
@@ -29,12 +34,17 @@ document.getElementById("login-btn").addEventListener("click", async () => {
   }
 });
 
-// Add client
+// ----------------- ADD CLIENT -----------------
 document.getElementById("add-client-btn").addEventListener("click", async () => {
-  const fullName = document.getElementById("fullName").value;
-  const email = document.getElementById("clientEmail").value;
-  const contactNumber = document.getElementById("contactNumber").value;
-  const dsjNumber = document.getElementById("dsjNumber").value;
+  const fullName = document.getElementById("fullName").value.trim();
+  const email = document.getElementById("clientEmail").value.trim();
+  const contactNumber = document.getElementById("contactNumber").value.trim();
+  const dsjNumber = document.getElementById("dsjNumber").value.trim();
+
+  if (!fullName || !email || !contactNumber || !dsjNumber) {
+    document.getElementById("client-msg").innerText = "All fields are required";
+    return;
+  }
 
   try {
     const res = await fetch(`${API}/client`, {
@@ -54,11 +64,16 @@ document.getElementById("add-client-btn").addEventListener("click", async () => 
   }
 });
 
-// Borrow money
+// ----------------- BORROW MONEY -----------------
 document.getElementById("borrow-btn").addEventListener("click", async () => {
   const clientId = document.getElementById("client-select").value;
   const amount = parseFloat(document.getElementById("amount").value);
-  const note = document.getElementById("note").value;
+  const note = document.getElementById("note").value.trim();
+
+  if (!clientId || !amount) {
+    document.getElementById("borrow-msg").innerText = "Client and amount required";
+    return;
+  }
 
   try {
     const res = await fetch(`${API}/borrow`, {
@@ -77,7 +92,7 @@ document.getElementById("borrow-btn").addEventListener("click", async () => {
   }
 });
 
-// Load clients for admin and dropdown
+// ----------------- LOAD CLIENTS -----------------
 async function loadClients() {
   try {
     const res = await fetch(`${API}/clients`);
@@ -94,13 +109,13 @@ async function loadClients() {
       li.innerText = `${client.full_name} | ${client.dsj_number} | ${client.contact_number}`;
       if(isAdmin) list.appendChild(li);
 
-      // Dropdown
+      // Dropdown for borrowing
       const option = document.createElement("option");
       option.value = client.id;
       option.innerText = client.full_name;
       select.appendChild(option);
     });
   } catch (err) {
-    console.log(err);
+    console.log("Error loading clients:", err);
   }
 }
