@@ -2,16 +2,18 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const { Pool } = require("pg");
+
 const app = express();
 
+// ------------------- MIDDLEWARE -------------------
 app.use(cors());
 app.use(express.json());
 
-// Serve frontend static files
+// Serve frontend static files first
 app.use(express.static(path.join(__dirname, "public")));
 
-// Serve index.html on root
-app.get("/", (req, res) => {
+// Serve index.html for root and any unknown routes (for single-page frontend)
+app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
@@ -21,7 +23,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-// ------------------- ROUTES -------------------
+// ------------------- API ROUTES -------------------
 
 // Test DB connection
 app.get("/db-test", async (req, res) => {
@@ -99,7 +101,7 @@ app.post("/borrow", async (req, res) => {
   }
 });
 
-// Get all clients (admin only)
+// Get all clients
 app.get("/clients", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM clients ORDER BY created_at DESC");
