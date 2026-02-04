@@ -42,6 +42,10 @@ app.post("/client", async (req, res) => {
     );
     res.json({ client: result.rows[0] });
   } catch (err) {
+    if (err.code === "23505") {
+      // Postgres unique violation
+      return res.status(400).json({ error: "This DSJ account number is already registered." });
+    }
     console.error("Error inserting client:", err);
     res.status(500).json({ error: "Database error" });
   }
@@ -65,21 +69,6 @@ app.get("/clients", async (req, res) => {
   }
 });
 
-// ------------------- STATIC FRONTEND -------------------
-app.use(express.static(path.join(__dirname, "public")));
-
-// Catch-all route (must be last!)
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
-});
-
-// ------------------- START SERVER -------------------
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
-
 // Delete member (admin only)
 app.delete("/client/:id", async (req, res) => {
   const token = req.headers["x-admin-token"];
@@ -96,4 +85,28 @@ app.delete("/client/:id", async (req, res) => {
     console.error("Error deleting client:", err);
     res.status(500).json({ error: "Database error" });
   }
+});
+
+// Optional: test DB connection
+app.get("/db-test", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT NOW()");
+    res.json({ success: true, time: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// ------------------- STATIC FRONTEND -------------------
+app.use(express.static(path.join(__dirname, "public")));
+
+// Catch-all route (must be last!)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// ------------------- START SERVER -------------------
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

@@ -53,9 +53,8 @@ document.getElementById("submit-member").addEventListener("click", async () => {
     });
 
     if (!res.ok) {
-      const text = await res.text(); // capture HTML error if any
-      console.error("Error response:", text);
-      document.getElementById("member-msg").innerText = "Error submitting member";
+      const data = await res.json();
+      document.getElementById("member-msg").innerText = data.error || "Error submitting member";
       return;
     }
 
@@ -93,8 +92,7 @@ document.getElementById("admin-login").addEventListener("click", async () => {
   }
 });
 
-//--------------Load Clients Admin Only-------------
-
+// ---------------- Load clients (admin only) ----------------
 async function loadClients() {
   try {
     const res = await fetch(`${API}/clients`, {
@@ -107,9 +105,10 @@ async function loadClients() {
       return;
     }
 
-    const data = await res.json(); // <-- make sure this is here
-
+    const data = await res.json();
     const list = document.getElementById("clients-list");
+    const totalCountEl = document.getElementById("total-count");
+
     list.innerHTML = "";
 
     data.clients.forEach(client => {
@@ -147,6 +146,9 @@ async function loadClients() {
       li.appendChild(delBtn);
       list.appendChild(li);
     });
+
+    // Show total members
+    totalCountEl.innerText = `Total Members: ${data.clients.length}`;
 
   } catch (err) {
     console.error(err);
