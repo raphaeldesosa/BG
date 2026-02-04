@@ -1,48 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>PayApp</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+  />
 </head>
 <body>
-  <!-- Landing Page -->
-  <div id="landing-page">
-    <h1>Welcome to PayApp</h1>
-    <button id="member-btn">Member</button>
-    <button id="admin-btn">Admin</button>
-  </div>
 
-  <!-- Member Registration -->
-  <div id="member-page" style="display:none;">
-    <h2>Member Registration</h2>
-    <input type="text" id="fullName" placeholder="Full Name" required>
-    <input type="text" id="contactNumber" placeholder="Contact Number" required>
-    <input type="email" id="email" placeholder="Email Address" required>
-    <input type="text" id="dsjNumber" placeholder="DSJ Account Number" required>
-    <button id="submit-member">Submit</button>
-    <p id="member-msg"></p>
-    <button id="member-back">Back</button>
-  </div>
+<!-- ===== LANDING PAGE ===== -->
+<div id="landing-page">
+  <h1>PayApp</h1>
+  <p>Please choose your role</p>
+  <button id="member-btn">Member</button>
+  <button id="admin-btn" class="secondary-btn">Admin</button>
+</div>
 
-  <!-- Admin Login -->
-  <div id="admin-page" style="display:none;">
-    <h2>Admin Login</h2>
-    <input type="text" id="admin-username" placeholder="Username" required>
-    <input type="password" id="admin-password" placeholder="Password" required>
-    <button id="admin-login">Login</button>
-    <p id="admin-msg"></p>
-    <button id="admin-back">Back</button>
-  </div>
+<!-- ===== MEMBER PAGE ===== -->
+<div id="member-page" style="display:none;">
+  <h2>Member Registration</h2>
 
-  <!-- Admin View -->
-  <div id="admin-view" style="display:none;">
-    <h2>Members List</h2>
+  <input id="fullName" placeholder="Full Name" />
+  <input id="contactNumber" placeholder="Contact Number" />
+  <input id="email" placeholder="Email Address" />
+  <input id="dsjNumber" placeholder="DSJ Account Number" />
+
+  <button id="submit-member">Submit</button>
+  <p id="member-msg"></p>
+
+  <button id="member-back" class="secondary-btn">Back</button>
+</div>
+
+<!-- ===== ADMIN LOGIN ===== -->
+<div id="admin-page" style="display:none;">
+  <h2>Admin Login</h2>
+
+  <input id="admin-username" placeholder="Username" />
+  <input id="admin-password" type="password" placeholder="Password" />
+
+  <button id="admin-login">Login</button>
+  <p id="admin-msg"></p>
+
+  <button id="admin-back" class="secondary-btn">Back</button>
+</div>
+
+<!-- ===== ADMIN VIEW ===== -->
+<div id="admin-view" style="display:none;">
+  <h2>Member List</h2>
+
+  <div class="members-container">
     <ul id="clients-list"></ul>
-    <p id="total-count"></p>
-    <button id="logout-admin">Logout</button>
   </div>
 
-  <script src="script.js"></script>
+  <p id="total-count" class="total-count"></p>
+
+  <button id="logout-admin" class="secondary-btn">Logout</button>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>

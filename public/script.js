@@ -1,156 +1,134 @@
-const API = ""; // same origin
+const API = ""; // same origin backend
 const ADMIN_CREDENTIALS = { username: "adminuser", password: "adminpass" };
 const ADMIN_TOKEN = "supersecret123";
 
-// ---------------- Page navigation ----------------
+// ===== PAGE REFERENCES =====
 const landing = document.getElementById("landing-page");
 const memberPage = document.getElementById("member-page");
 const adminPage = document.getElementById("admin-page");
 const adminView = document.getElementById("admin-view");
 
-document.getElementById("member-btn").addEventListener("click", () => {
+// ===== NAVIGATION =====
+document.getElementById("member-btn").onclick = () => {
   landing.style.display = "none";
   memberPage.style.display = "block";
-});
+};
 
-document.getElementById("admin-btn").addEventListener("click", () => {
+document.getElementById("admin-btn").onclick = () => {
   landing.style.display = "none";
   adminPage.style.display = "block";
-});
+};
 
-document.getElementById("member-back").addEventListener("click", () => {
+document.getElementById("member-back").onclick = () => {
   memberPage.style.display = "none";
   landing.style.display = "block";
-});
+};
 
-document.getElementById("admin-back").addEventListener("click", () => {
+document.getElementById("admin-back").onclick = () => {
   adminPage.style.display = "none";
   landing.style.display = "block";
-});
+};
 
-document.getElementById("logout-admin").addEventListener("click", () => {
+document.getElementById("logout-admin").onclick = () => {
   adminView.style.display = "none";
   landing.style.display = "block";
-});
+};
 
-// ---------------- Member submission ----------------
-document.getElementById("submit-member").addEventListener("click", async () => {
-  const fullName = document.getElementById("fullName").value;
+// ===== MEMBER SUBMIT =====
+document.getElementById("submit-member").onclick = async () => {
+  const fullName = fullNameInput.value = document.getElementById("fullName").value;
   const contactNumber = document.getElementById("contactNumber").value;
   const email = document.getElementById("email").value;
   const dsjNumber = document.getElementById("dsjNumber").value;
 
   if (!fullName || !contactNumber || !email || !dsjNumber) {
-    document.getElementById("member-msg").innerText = "Please fill in all fields";
+    document.getElementById("member-msg").innerText = "All fields required";
     return;
   }
 
-  try {
-    const res = await fetch(`${API}/client`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName, contactNumber, email, dsjNumber })
-    });
+  const res = await fetch(`${API}/client`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fullName, contactNumber, email, dsjNumber })
+  });
 
-    if (!res.ok) {
-      const data = await res.json();
-      document.getElementById("member-msg").innerText = data.error || "Error submitting member";
-      return;
-    }
+  const data = await res.json();
 
-    const data = await res.json();
-    const due = new Date(data.client.due_date);
-    const today = new Date();
-    const diffDays = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
-
-    document.getElementById("member-msg").innerText = 
-      `Member registered! Borrowed $100. Due: ${due.toLocaleDateString()}` +
-      (diffDays <= 7 ? " ⚠ Your payment is due soon!" : "");
-
-    document.getElementById("fullName").value = "";
-    document.getElementById("contactNumber").value = "";
-    document.getElementById("email").value = "";
-    document.getElementById("dsjNumber").value = "";
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById("member-msg").innerText = err.message;
+  if (!res.ok) {
+    document.getElementById("member-msg").innerText = data.error;
+    return;
   }
-});
 
-// ---------------- Admin login ----------------
-document.getElementById("admin-login").addEventListener("click", async () => {
-  const username = document.getElementById("admin-username").value;
-  const password = document.getElementById("admin-password").value;
+  const dueDate = new Date(data.client.due_date);
+  const daysLeft = Math.ceil((dueDate - new Date()) / (1000 * 60 * 60 * 24));
 
-  if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+  document.getElementById("member-msg").innerText =
+    `Registered successfully! Due on ${dueDate.toLocaleDateString()}` +
+    (daysLeft <= 7 ? " ⚠ Payment due soon!" : "");
+
+  ["fullName", "contactNumber", "email", "dsjNumber"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+};
+
+// ===== ADMIN LOGIN =====
+document.getElementById("admin-login").onclick = () => {
+  const u = document.getElementById("admin-username").value;
+  const p = document.getElementById("admin-password").value;
+
+  if (u === ADMIN_CREDENTIALS.username && p === ADMIN_CREDENTIALS.password) {
     adminPage.style.display = "none";
     adminView.style.display = "block";
     loadClients();
   } else {
     document.getElementById("admin-msg").innerText = "Invalid credentials";
   }
-});
+};
 
-// ---------------- Load clients (admin only) ----------------
+// ===== LOAD CLIENTS =====
 async function loadClients() {
-  try {
-    const res = await fetch(`${API}/clients`, {
-      headers: { "x-admin-token": ADMIN_TOKEN }
-    });
+  const res = await fetch(`${API}/clients`, {
+    headers: { "x-admin-token": ADMIN_TOKEN }
+  });
 
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("Admin fetch error:", text);
-      return;
-    }
+  const data = await res.json();
+  const list = document.getElementById("clients-list");
+  const total = document.getElementById("total-count");
 
-    const data = await res.json();
-    const list = document.getElementById("clients-list");
-    const totalCountEl = document.getElementById("total-count");
+  list.innerHTML = "";
 
-    list.innerHTML = "";
+  data.clients.forEach(client => {
+    const due = new Date(client.due_date);
+    const daysLeft = Math.ceil((due - new Date()) / (1000 * 60 * 60 * 24));
 
-    data.clients.forEach(client => {
-      const dueDate = new Date(client.due_date);
-      const today = new Date();
-      const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-      const alertText = diffDays <= 7 ? " ⚠ Due soon!" : "";
+    const li = document.createElement("li");
+    li.className = "member-card";
 
-      const li = document.createElement("li");
-      li.innerText = `${client.full_name} | ${client.dsj_number} | ${client.contact_number} | ${client.email} | Borrowed $${client.borrow_amount} | Due: ${dueDate.toLocaleDateString()}${alertText}`;
+    li.innerHTML = `
+      <div class="member-info">
+        <span class="member-name">${client.full_name}</span>
+        <span class="member-meta">DSJ: ${client.dsj_number} • ${client.contact_number} • ${client.email}</span>
+        <span class="member-meta ${daysLeft <= 7 ? "due-soon" : ""}">
+          Borrowed $${client.borrow_amount} — Due: ${due.toLocaleDateString()}
+        </span>
+      </div>
+    `;
 
-      // Delete button
-      const delBtn = document.createElement("button");
-      delBtn.innerText = "Delete";
-      delBtn.style.marginLeft = "10px";
-
-      delBtn.addEventListener("click", async () => {
-        if (!confirm(`Delete ${client.full_name}?`)) return;
-        try {
-          const delRes = await fetch(`${API}/client/${client.id}`, {
-            method: "DELETE",
-            headers: { "x-admin-token": ADMIN_TOKEN }
-          });
-          if (delRes.ok) {
-            loadClients(); // refresh list
-          } else {
-            const text = await delRes.text();
-            console.error("Delete failed:", text);
-          }
-        } catch (err) {
-          console.error(err);
-        }
+    const del = document.createElement("button");
+    del.className = "delete-btn";
+    del.innerHTML = `<i class="fa-solid fa-trash"></i>`;
+    del.onclick = async () => {
+      if (!confirm(`Remove ${client.full_name}?`)) return;
+      await fetch(`${API}/client/${client.id}`, {
+        method: "DELETE",
+        headers: { "x-admin-token": ADMIN_TOKEN }
       });
+      loadClients();
+    };
 
-      li.appendChild(delBtn);
-      list.appendChild(li);
-    });
+    li.appendChild(del);
+    list.appendChild(li);
+  });
 
-    // Show total members
-    totalCountEl.innerText = `Total Members: ${data.clients.length}`;
-
-  } catch (err) {
-    console.error(err);
-  }
+  total.innerText = `Total Members: ${data.clients.length}`;
 }
