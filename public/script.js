@@ -1,41 +1,55 @@
 /*********************************
- * PAGE NAVIGATION
+ * PAGE ELEMENTS
  *********************************/
 const landingPage = document.getElementById("landing-page");
 const memberPage = document.getElementById("member-page");
-const adminLoginPage = document.getElementById("admin-login-page");
-const adminPage = document.getElementById("admin-page");
+const adminLoginPage = document.getElementById("admin-page");
+const adminViewPage = document.getElementById("admin-view");
 
+/*********************************
+ * PAGE SWITCHER (SAFE)
+ *********************************/
 function showPage(page) {
-  [landingPage, memberPage, adminLoginPage, adminPage].forEach(p => {
+  [landingPage, memberPage, adminLoginPage, adminViewPage].forEach(p => {
     if (p) p.style.display = "none";
   });
-  page.style.display = "block";
+  if (page) page.style.display = "block";
 }
 
 /*********************************
  * LANDING BUTTONS
  *********************************/
-document.getElementById("member-btn")?.addEventListener("click", () => {
+document.getElementById("member-btn").onclick = () =>
   showPage(memberPage);
-});
 
-document.getElementById("admin-btn")?.addEventListener("click", () => {
+document.getElementById("admin-btn").onclick = () =>
   showPage(adminLoginPage);
-});
+
+/*********************************
+ * BACK BUTTONS
+ *********************************/
+document.getElementById("member-back-btn").onclick = () =>
+  showPage(landingPage);
+
+document.getElementById("admin-back-btn").onclick = () =>
+  showPage(landingPage);
 
 /*********************************
  * MEMBER REGISTRATION
  *********************************/
-document.getElementById("member-form")?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
+document.getElementById("submit-member").onclick = async () => {
   const data = {
-    name: document.getElementById("name").value,
-    contact: document.getElementById("contact").value,
-    email: document.getElementById("email").value,
-    dsj_account: document.getElementById("dsj_account").value
+    name: document.getElementById("fullName").value.trim(),
+    contact: document.getElementById("contactNumber").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    dsj_account: document.getElementById("dsjNumber").value.trim()
   };
+
+  if (!data.name || !data.contact || !data.dsj_account) {
+    document.getElementById("member-msg").textContent =
+      "Please fill in all required fields.";
+    return;
+  }
 
   const res = await fetch("/clients", {
     method: "POST",
@@ -43,22 +57,23 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
     body: JSON.stringify(data)
   });
 
+  const msg = document.getElementById("member-msg");
+
   if (res.ok) {
-    alert("Registration successful! Due date is 2 months from today.");
-    e.target.reset();
+    msg.textContent = "Registration successful!";
+    msg.style.color = "green";
     showPage(landingPage);
   } else {
     const err = await res.json();
-    alert(err.error || "Registration failed");
+    msg.textContent = err.error || "Registration failed.";
+    msg.style.color = "red";
   }
-});
+};
 
 /*********************************
  * ADMIN LOGIN
  *********************************/
-document.getElementById("admin-login-form")?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
+document.getElementById("admin-login").onclick = async () => {
   const username = document.getElementById("admin-username").value;
   const password = document.getElementById("admin-password").value;
 
@@ -68,16 +83,19 @@ document.getElementById("admin-login-form")?.addEventListener("submit", async (e
     body: JSON.stringify({ username, password })
   });
 
+  const msg = document.getElementById("admin-msg");
+
   if (res.ok) {
-    showPage(adminPage);
+    msg.textContent = "";
+    showPage(adminViewPage);
     loadMembers();
   } else {
-    alert("Invalid admin credentials");
+    msg.textContent = "Invalid admin credentials.";
   }
-});
+};
 
 /*********************************
- * LOAD MEMBERS (ADMIN)
+ * LOAD MEMBERS
  *********************************/
 async function loadMembers() {
   const list = document.getElementById("clients-list");
@@ -94,21 +112,13 @@ async function loadMembers() {
     const li = document.createElement("li");
     li.className = "member-card";
 
-    const dueDate = new Date(member.due_date);
-    const today = new Date();
-    const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-    const dueSoon = diffDays <= 7;
-
     li.innerHTML = `
       <div class="member-info">
         <div class="member-name">${member.name}</div>
         <div class="member-meta">DSJ: ${member.dsj_account}</div>
         <div class="member-meta">Contact: ${member.contact}</div>
-        <div class="member-meta ${dueSoon ? "due-soon" : ""}">
-          Due: ${dueDate.toLocaleDateString()}
-        </div>
       </div>
-      <button class="delete-btn">🗑️</button>
+      <button class="delete-btn" title="Delete">🗑️</button>
     `;
 
     li.querySelector(".delete-btn").onclick = () =>
@@ -119,7 +129,7 @@ async function loadMembers() {
 }
 
 /*********************************
- * DELETE + UNDO SYSTEM
+ * DELETE + UNDO
  *********************************/
 let deleteTarget = null;
 let deletedCache = null;
@@ -131,31 +141,24 @@ const cancelBtn = document.getElementById("cancel-delete");
 const toast = document.getElementById("undo-toast");
 const undoBtn = document.getElementById("undo-btn");
 
-function requestDelete(id, cardElement, memberData) {
-  deleteTarget = { id, cardElement };
-  deletedCache = memberData;
+function requestDelete(id, card, member) {
+  deleteTarget = { id, card };
+  deletedCache = member;
   modal.classList.remove("hidden");
 }
 
 cancelBtn.onclick = () => {
   modal.classList.add("hidden");
-  deleteTarget = null;
 };
 
 confirmBtn.onclick = async () => {
   modal.classList.add("hidden");
+  deleteTarget.card.remove();
 
-  const { id, cardElement } = deleteTarget;
-
-  cardElement.classList.add("removing");
-
-  setTimeout(() => {
-    cardElement.remove();
-    showUndoToast();
-  }, 300);
+  toast.classList.remove("hidden");
 
   undoTimer = setTimeout(async () => {
-    await fetch(`/clients/${id}`, { method: "DELETE" });
+    await fetch(`/clients/${deleteTarget.id}`, { method: "DELETE" });
     deletedCache = null;
     loadMembers();
   }, 5000);
@@ -174,12 +177,7 @@ undoBtn.onclick = async () => {
   loadMembers();
 };
 
-function showUndoToast() {
-  toast.classList.remove("hidden");
-  setTimeout(() => toast.classList.add("hidden"), 5000);
-}
-
 /*********************************
- * INITIAL STATE
+ * INIT
  *********************************/
 showPage(landingPage);
