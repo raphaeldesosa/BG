@@ -4,7 +4,7 @@
 const landingPage = document.getElementById("landing-page");
 const memberPage = document.getElementById("member-page");
 const adminLoginPage = document.getElementById("admin-login-page");
-const adminPage = document.getElementById("admin-page");
+const adminPage = document.getElementById("admin-view");
 
 /*********************************
  * GLOBAL STATE
