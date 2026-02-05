@@ -7,6 +7,11 @@ const adminLoginPage = document.getElementById("admin-login-page");
 const adminPage = document.getElementById("admin-page");
 
 /*********************************
+ * GLOBAL ADMIN TOKEN
+ *********************************/
+let ADMIN_TOKEN = null;
+
+/*********************************
  * PAGE SWITCHER (NULL-SAFE)
  *********************************/
 function showPage(page) {
@@ -19,8 +24,12 @@ function showPage(page) {
 /*********************************
  * LANDING BUTTONS
  *********************************/
-document.getElementById("member-btn")?.addEventListener("click", () => showPage(memberPage));
-document.getElementById("admin-btn")?.addEventListener("click", () => showPage(adminLoginPage));
+document.getElementById("member-btn")?.addEventListener("click", () => {
+  showPage(memberPage);
+});
+document.getElementById("admin-btn")?.addEventListener("click", () => {
+  showPage(adminLoginPage);
+});
 
 /*********************************
  * BACK BUTTONS
@@ -34,12 +43,12 @@ document.getElementById("admin-back-btn")?.addEventListener("click", () => showP
 document.getElementById("member-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const data = {
-    name: document.getElementById("name").value,
-    contact: document.getElementById("contact").value,
+    fullName: document.getElementById("name").value,
+    contactNumber: document.getElementById("contact").value,
     email: document.getElementById("email").value,
-    dsj_account: document.getElementById("dsj_account").value
+    dsjNumber: document.getElementById("dsj_account").value
   };
-  const res = await fetch("/clients", {
+  const res = await fetch("/client", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
@@ -69,6 +78,8 @@ document.getElementById("admin-login-form")?.addEventListener("submit", async (e
   });
 
   if (res.ok) {
+    const data = await res.json();
+    ADMIN_TOKEN = data.token;
     showPage(adminPage);
     loadMembers();
   } else {
@@ -83,21 +94,21 @@ async function loadMembers() {
   const list = document.getElementById("clients-list");
   const total = document.getElementById("total-count");
   if (!list || !total) return;
-
   list.innerHTML = "";
 
   try {
-    const res = await fetch("/clients");
-    const data = await res.json();
+    const res = await fetch("/clients", {
+      headers: { "x-admin-token": ADMIN_TOKEN }
+    });
 
-    // Handle if data is not an array
-    const members = Array.isArray(data) ? data : data.clients;
-    if (!Array.isArray(members)) {
-      console.error("Invalid members data:", data);
-      total.textContent = "Total Members: 0";
+    if (!res.ok) {
+      const err = await res.json();
+      console.error("Error loading members:", err);
+      total.textContent = "Failed to load members";
       return;
     }
 
+    const members = await res.json();
     total.textContent = `Total Members: ${members.length}`;
 
     members.forEach(member => {
@@ -111,9 +122,9 @@ async function loadMembers() {
 
       li.innerHTML = `
         <div class="member-info">
-          <div class="member-name">${member.name}</div>
-          <div class="member-meta">DSJ: ${member.dsj_account}</div>
-          <div class="member-meta">Contact: ${member.contact}</div>
+          <div class="member-name">${member.full_name}</div>
+          <div class="member-meta">DSJ: ${member.dsj_number}</div>
+          <div class="member-meta">Contact: ${member.contact_number}</div>
           <div class="member-meta ${dueSoon ? "due-soon" : ""}">
             Due: ${dueDate.toLocaleDateString()}
           </div>
@@ -121,40 +132,48 @@ async function loadMembers() {
         <button class="delete-btn">🗑️</button>
       `;
 
-      li.querySelector(".delete-btn").onclick = () => confirmDelete(member.id, li);
+      li.querySelector(".delete-btn").onclick = () => requestDelete(member.id, li);
       list.appendChild(li);
     });
+
   } catch (err) {
-    console.error("Failed to load members:", err);
-    total.textContent = "Total Members: 0";
+    console.error("Unexpected error:", err);
+    total.textContent = "Failed to load members";
   }
 }
 
 /*********************************
- * DELETE CONFIRMATION
+ * DELETE MODAL
  *********************************/
+let deleteTarget = null;
 const modal = document.getElementById("delete-modal");
 const confirmBtn = document.getElementById("confirm-delete");
 const cancelBtn = document.getElementById("cancel-delete");
 
-let deleteTarget = null;
-
-function confirmDelete(id, card) {
+function requestDelete(id, card) {
   deleteTarget = { id, card };
-  modal.classList.remove("hidden");
+  modal?.classList.remove("hidden");
 }
 
 cancelBtn?.addEventListener("click", () => {
-  modal.classList.add("hidden");
+  modal?.classList.add("hidden");
   deleteTarget = null;
 });
 
 confirmBtn?.addEventListener("click", async () => {
   if (!deleteTarget) return;
-  modal.classList.add("hidden");
-  await fetch(`/clients/${deleteTarget.id}`, { method: "DELETE" });
-  deleteTarget.card.remove();
-  deleteTarget = null;
+  modal?.classList.add("hidden");
+
+  try {
+    await fetch(`/client/${deleteTarget.id}`, {
+      method: "DELETE",
+      headers: { "x-admin-token": ADMIN_TOKEN }
+    });
+    deleteTarget.card.remove();
+    deleteTarget = null;
+  } catch (err) {
+    console.error("Failed to delete member:", err);
+  }
 });
 
 /*********************************
