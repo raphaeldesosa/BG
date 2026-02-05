@@ -1,3 +1,7 @@
+/* ===============================
+   GLOBAL STYLES (DESKTOP + MOBILE)
+   =============================== */
+
 * {
   box-sizing: border-box;
   font-family: "Segoe UI", Tahoma, sans-serif;
@@ -6,18 +10,23 @@
 body {
   background: #f4f6f9;
   margin: 0;
-  padding: 20px;
+  padding: 30px;
   color: #333;
 }
 
-h1, h2 {
+h1 {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+h2 {
   margin-bottom: 15px;
 }
 
 input {
   display: block;
   width: 100%;
-  max-width: 360px;
+  max-width: 400px;
   padding: 10px;
   margin-bottom: 10px;
   border-radius: 6px;
@@ -25,14 +34,13 @@ input {
 }
 
 button {
-  padding: 10px 16px;
+  padding: 10px 18px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   background: #007bff;
   color: white;
   font-size: 14px;
-  margin-right: 6px;
 }
 
 button:hover {
@@ -47,7 +55,17 @@ button:hover {
   background: #5a6268;
 }
 
-/* ===== ADMIN LIST ===== */
+/* ===============================
+   LANDING PAGE (DESKTOP DEFAULT)
+   =============================== */
+
+#landing-page {
+  max-width: 400px;
+}
+
+/* ===============================
+   ADMIN LIST (DESKTOP)
+   =============================== */
 
 .members-container {
   background: white;
@@ -92,12 +110,11 @@ button:hover {
 }
 
 .due-soon {
-  color: #d9534f;
+  color: #dc3545;
   font-weight: 600;
 }
 
-/* ===== DELETE ICON ===== */
-
+/* Trash icon (desktop) */
 .delete-btn {
   background: none;
   border: none;
@@ -108,57 +125,101 @@ button:hover {
 
 .delete-btn:hover {
   color: #b52b27;
-  transform: scale(1.1);
-}
-
-/* ===== TOTAL COUNT ===== */
-
-.total-count {
-  margin-top: 12px;
-  font-weight: 600;
 }
 
 /* ===============================
    MOBILE RESPONSIVE (PHONES)
    =============================== */
+
 @media screen and (max-width: 768px) {
 
   body {
-    padding: 15px;
+    padding: 14px;
+  }
+
+  /* ===== CENTER PAYAPP LANDING ===== */
+  #landing-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    margin: 0 auto;
   }
 
   h1 {
-    font-size: 26px;
+    font-size: 28px;
+    text-align: center;
   }
 
   h2 {
     font-size: 22px;
+    text-align: center;
   }
 
+  /* ===== INPUTS ===== */
+  input {
+    width: 100%;
+    max-width: 100%;
+    font-size: 16px;
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  /* ===== BUTTONS (MOBILE APP STYLE) ===== */
   button {
     width: 100%;
-    font-size: 15px;
+    font-size: 16px;
+    padding: 14px;
+    border-radius: 14px;
+    font-weight: 600;
+    margin-top: 8px;
+    transition: all 0.2s ease;
   }
 
-  input {
-    max-width: 100%;
-    font-size: 15px;
+  button:active {
+    transform: scale(0.97);
   }
 
-  /* Landing buttons spacing */
+  /* Primary buttons */
+  button:not(.secondary-btn):not(.delete-btn) {
+    background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+    box-shadow: 0 6px 14px rgba(13, 110, 253, 0.35);
+  }
+
+  button:not(.secondary-btn):not(.delete-btn):hover {
+    background: linear-gradient(135deg, #0b5ed7, #084298);
+  }
+
+  /* Secondary buttons */
+  .secondary-btn {
+    background: #f1f3f5;
+    color: #333;
+    box-shadow: none;
+  }
+
+  .secondary-btn:hover {
+    background: #e9ecef;
+  }
+
+  /* Landing spacing */
   #landing-page button {
-    margin-bottom: 10px;
+    margin-bottom: 12px;
   }
 
-  /* Admin member list */
+  /* ===== ADMIN MEMBER LIST (MOBILE) ===== */
   .members-container {
-    padding: 10px;
+    padding: 12px;
   }
 
   .member-card {
     flex-direction: column;
     align-items: flex-start;
-    gap: 10px;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 12px;
+    background: #fff;
   }
 
   .member-info {
@@ -166,19 +227,33 @@ button:hover {
   }
 
   .member-name {
-    font-size: 16px;
+    font-size: 17px;
   }
 
   .member-meta {
     font-size: 14px;
   }
 
+  /* Trash icon (mobile) */
   .delete-btn {
     align-self: flex-end;
     font-size: 20px;
+    padding: 10px;
+    border-radius: 50%;
+    background: #fff5f5;
+    box-shadow: 0 3px 8px rgba(220, 53, 69, 0.25);
   }
 
+  .delete-btn:hover {
+    background: #ffe3e3;
+    transform: scale(1.1);
+  }
+
+  /* ===== TOTAL COUNT ===== */
   .total-count {
+    text-align: center;
     font-size: 14px;
+    margin-top: 12px;
+    color: #555;
   }
 }
