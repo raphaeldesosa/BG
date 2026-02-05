@@ -117,3 +117,68 @@ button:hover {
   margin-top: 12px;
   font-weight: 600;
 }
+
+/* ===============================
+   MOBILE RESPONSIVE (PHONES)
+   =============================== */
+@media screen and (max-width: 768px) {
+
+  body {
+    padding: 15px;
+  }
+
+  h1 {
+    font-size: 26px;
+  }
+
+  h2 {
+    font-size: 22px;
+  }
+
+  button {
+    width: 100%;
+    font-size: 15px;
+  }
+
+  input {
+    max-width: 100%;
+    font-size: 15px;
+  }
+
+  /* Landing buttons spacing */
+  #landing-page button {
+    margin-bottom: 10px;
+  }
+
+  /* Admin member list */
+  .members-container {
+    padding: 10px;
+  }
+
+  .member-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .member-info {
+    width: 100%;
+  }
+
+  .member-name {
+    font-size: 16px;
+  }
+
+  .member-meta {
+    font-size: 14px;
+  }
+
+  .delete-btn {
+    align-self: flex-end;
+    font-size: 20px;
+  }
+
+  .total-count {
+    font-size: 14px;
+  }
+}
