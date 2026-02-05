@@ -1,13 +1,15 @@
 /*********************************
- * PAGE ELEMENTS
+ * PAGE SELECTORS
  *********************************/
 const landingPage = document.getElementById("landing-page");
 const memberPage = document.getElementById("member-page");
-const adminLoginPage = document.getElementById("admin-page");
+const adminLoginPage = document.getElementById("admin-page"); // admin login
 const adminViewPage = document.getElementById("admin-view");
 
+let adminToken = null; // store after login
+
 /*********************************
- * PAGE SWITCHER (SAFE)
+ * PAGE SWITCHER
  *********************************/
 function showPage(page) {
   [landingPage, memberPage, adminLoginPage, adminViewPage].forEach(p => {
@@ -19,63 +21,49 @@ function showPage(page) {
 /*********************************
  * LANDING BUTTONS
  *********************************/
-document.getElementById("member-btn").onclick = () =>
-  showPage(memberPage);
-
-document.getElementById("admin-btn").onclick = () =>
-  showPage(adminLoginPage);
+document.getElementById("member-btn")?.addEventListener("click", () => showPage(memberPage));
+document.getElementById("admin-btn")?.addEventListener("click", () => showPage(adminLoginPage));
 
 /*********************************
  * BACK BUTTONS
  *********************************/
-document.getElementById("member-back-btn").onclick = () =>
-  showPage(landingPage);
-
-document.getElementById("admin-back-btn").onclick = () =>
-  showPage(landingPage);
+document.getElementById("member-back-btn")?.addEventListener("click", () => showPage(landingPage));
+document.getElementById("admin-back-btn")?.addEventListener("click", () => showPage(landingPage));
 
 /*********************************
  * MEMBER REGISTRATION
  *********************************/
-document.getElementById("submit-member").onclick = async () => {
+document.getElementById("submit-member")?.addEventListener("click", async () => {
   const data = {
-    name: document.getElementById("fullName").value.trim(),
-    contact: document.getElementById("contactNumber").value.trim(),
-    email: document.getElementById("email").value.trim(),
-    dsj_account: document.getElementById("dsjNumber").value.trim()
+    fullName: document.getElementById("fullName").value,
+    contactNumber: document.getElementById("contactNumber").value,
+    email: document.getElementById("email").value,
+    dsjNumber: document.getElementById("dsjNumber").value
   };
 
-  if (!data.name || !data.contact || !data.dsj_account) {
-    document.getElementById("member-msg").textContent =
-      "Please fill in all required fields.";
-    return;
-  }
-
-  const res = await fetch("/clients", {
+  const res = await fetch("/client", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
   });
 
-  const msg = document.getElementById("member-msg");
-
   if (res.ok) {
-    msg.textContent = "Registration successful!";
-    msg.style.color = "green";
+    alert("Registration successful! Due date is 2 months from today.");
+    memberPage.querySelector("input").value = "";
     showPage(landingPage);
   } else {
     const err = await res.json();
-    msg.textContent = err.error || "Registration failed.";
-    msg.style.color = "red";
+    alert(err.error || "Registration failed");
   }
-};
+});
 
 /*********************************
  * ADMIN LOGIN
  *********************************/
-document.getElementById("admin-login").onclick = async () => {
+document.getElementById("admin-login")?.addEventListener("click", async () => {
   const username = document.getElementById("admin-username").value;
   const password = document.getElementById("admin-password").value;
+  const msg = document.getElementById("admin-msg");
 
   const res = await fetch("/admin/login", {
     method: "POST",
@@ -83,16 +71,16 @@ document.getElementById("admin-login").onclick = async () => {
     body: JSON.stringify({ username, password })
   });
 
-  const msg = document.getElementById("admin-msg");
-
   if (res.ok) {
+    const json = await res.json();
+    adminToken = json.token;
     msg.textContent = "";
     showPage(adminViewPage);
     loadMembers();
   } else {
-    msg.textContent = "Invalid admin credentials.";
+    msg.textContent = "Invalid credentials";
   }
-};
+});
 
 /*********************************
  * LOAD MEMBERS
@@ -100,30 +88,38 @@ document.getElementById("admin-login").onclick = async () => {
 async function loadMembers() {
   const list = document.getElementById("clients-list");
   const total = document.getElementById("total-count");
+  if (!list || !total || !adminToken) return;
 
-  list.innerHTML = "";
-
-  const res = await fetch("/clients");
+  const res = await fetch("/clients", {
+    headers: { "x-admin-token": adminToken }
+  });
   const members = await res.json();
 
+  list.innerHTML = "";
   total.textContent = `Total Members: ${members.length}`;
 
   members.forEach(member => {
     const li = document.createElement("li");
     li.className = "member-card";
 
+    const dueDate = new Date(member.due_date);
+    const today = new Date();
+    const diffDays = Math.ceil((dueDate - today) / (1000*60*60*24));
+    const dueSoon = diffDays <= 7;
+
     li.innerHTML = `
       <div class="member-info">
-        <div class="member-name">${member.name}</div>
-        <div class="member-meta">DSJ: ${member.dsj_account}</div>
-        <div class="member-meta">Contact: ${member.contact}</div>
+        <div class="member-name">${member.full_name}</div>
+        <div class="member-meta">DSJ: ${member.dsj_number}</div>
+        <div class="member-meta">Contact: ${member.contact_number}</div>
+        <div class="member-meta ${dueSoon ? "due-soon" : ""}">
+          Due: ${dueDate.toLocaleDateString()}
+        </div>
       </div>
-      <button class="delete-btn" title="Delete">🗑️</button>
+      <button class="delete-btn">🗑️</button>
     `;
 
-    li.querySelector(".delete-btn").onclick = () =>
-      requestDelete(member.id, li, member);
-
+    li.querySelector(".delete-btn").onclick = () => requestDelete(member.id, li, member);
     list.appendChild(li);
   });
 }
@@ -144,40 +140,43 @@ const undoBtn = document.getElementById("undo-btn");
 function requestDelete(id, card, member) {
   deleteTarget = { id, card };
   deletedCache = member;
-  modal.classList.remove("hidden");
+  modal?.classList.remove("hidden");
 }
 
-cancelBtn.onclick = () => {
+cancelBtn?.addEventListener("click", () => {
   modal.classList.add("hidden");
-};
+  deleteTarget = null;
+});
 
-confirmBtn.onclick = async () => {
+confirmBtn?.addEventListener("click", async () => {
   modal.classList.add("hidden");
   deleteTarget.card.remove();
-
-  toast.classList.remove("hidden");
+  toast?.classList.remove("hidden");
 
   undoTimer = setTimeout(async () => {
-    await fetch(`/clients/${deleteTarget.id}`, { method: "DELETE" });
+    await fetch(`/client/${deleteTarget.id}`, {
+      method: "DELETE",
+      headers: { "x-admin-token": adminToken }
+    });
     deletedCache = null;
     loadMembers();
   }, 5000);
-};
+});
 
-undoBtn.onclick = async () => {
+undoBtn?.addEventListener("click", async () => {
   clearTimeout(undoTimer);
   toast.classList.add("hidden");
 
-  await fetch("/clients", {
+  await fetch("/client", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(deletedCache)
   });
 
   loadMembers();
-};
+});
 
 /*********************************
- * INIT
+ * INITIAL LOAD
  *********************************/
 showPage(landingPage);

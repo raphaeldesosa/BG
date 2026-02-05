@@ -1,7 +1,6 @@
 /* ===============================
-   GLOBAL STYLES (DESKTOP + MOBILE)
+   GLOBAL STYLES
    =============================== */
-
 * {
   box-sizing: border-box;
   font-family: "Segoe UI", Tahoma, sans-serif;
@@ -56,23 +55,23 @@ button:hover {
 }
 
 /* ===============================
-   LANDING PAGE (DESKTOP DEFAULT)
+   LANDING PAGE
    =============================== */
-
 #landing-page {
   max-width: 400px;
+  margin: 0 auto;
 }
 
 /* ===============================
-   ADMIN LIST (DESKTOP)
+   ADMIN LIST
    =============================== */
-
 .members-container {
   background: white;
   border-radius: 10px;
   padding: 15px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   max-width: 900px;
+  margin: 0 auto;
 }
 
 #clients-list {
@@ -114,7 +113,6 @@ button:hover {
   font-weight: 600;
 }
 
-/* Trash icon (desktop) */
 .delete-btn {
   background: none;
   border: none;
@@ -212,61 +210,58 @@ button:hover {
 }
 
 /* ===============================
-   MOBILE RESPONSIVE (PHONES)
+   MOBILE RESPONSIVE
    =============================== */
-
 @media screen and (max-width: 768px) {
 
   body {
     padding: 14px;
   }
 
-  /* ===== CENTER PAYAPP LANDING ===== */
-  #landing-page {
+  #landing-page,
+  #member-page,
+  #admin-login-page,
+  #admin-page {
+    width: 100%;
+    max-width: 100%;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
     text-align: center;
+    padding: 0 12px;
     margin: 0 auto;
   }
 
   h1 {
-    font-size: 28px;
-    text-align: center;
+    font-size: 24px;
   }
 
   h2 {
-    font-size: 22px;
-    text-align: center;
+    font-size: 20px;
   }
 
-  /* ===== INPUTS ===== */
   input {
     width: 100%;
-    max-width: 100%;
     font-size: 16px;
-    padding: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
     border-radius: 10px;
   }
 
-  /* ===== BUTTONS (MOBILE APP STYLE) ===== */
   button {
     width: 100%;
     font-size: 16px;
     padding: 14px;
-    border-radius: 14px;
-    font-weight: 600;
+    border-radius: 12px;
     margin-top: 8px;
-    transition: all 0.2s ease;
   }
 
   button:active {
     transform: scale(0.97);
   }
 
-  /* Primary buttons */
   button:not(.secondary-btn):not(.delete-btn) {
     background: linear-gradient(135deg, #0d6efd, #0b5ed7);
     box-shadow: 0 6px 14px rgba(13, 110, 253, 0.35);
@@ -276,7 +271,6 @@ button:hover {
     background: linear-gradient(135deg, #0b5ed7, #084298);
   }
 
-  /* Secondary buttons */
   .secondary-btn {
     background: #f1f3f5;
     color: #333;
@@ -287,21 +281,17 @@ button:hover {
     background: #e9ecef;
   }
 
-  /* Landing spacing */
-  #landing-page button {
-    margin-bottom: 12px;
-  }
-
-  /* ===== ADMIN MEMBER LIST (MOBILE) ===== */
+  /* Admin member list */
   .members-container {
     padding: 12px;
+    width: 100%;
   }
 
   .member-card {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
-    padding: 14px;
+    gap: 10px;
+    padding: 12px;
     border-radius: 12px;
     background: #fff;
   }
@@ -311,34 +301,51 @@ button:hover {
   }
 
   .member-name {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .member-meta {
     font-size: 14px;
   }
 
-  /* Trash icon  */
-.delete-btn {
-  align-self: flex-end;
-  font-size: 22px;
-  padding: 6px;
-  border-radius: 8px;
-  background: transparent;
-  box-shadow: none;
-  color: #dc3545;
-}
+  .delete-btn {
+    align-self: flex-end;
+    font-size: 20px;
+    padding: 6px;
+    border-radius: 8px;
+    background: transparent;
+    color: #dc3545;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
 
-.delete-btn:hover {
-  background: rgba(220, 53, 69, 0.1);
-  transform: scale(1.1);
-}
+  .delete-btn:hover {
+    background: rgba(220, 53, 69, 0.1);
+    transform: scale(1.1);
+  }
 
-  /* ===== TOTAL COUNT ===== */
   .total-count {
     text-align: center;
     font-size: 14px;
     margin-top: 12px;
     color: #555;
+  }
+
+  .modal-content {
+    width: 90%;
+    max-width: 320px;
+    padding: 16px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .undo-toast {
+    bottom: 16px;
+    padding: 10px 14px;
+    font-size: 14px;
+    flex-direction: column;
+    gap: 8px;
   }
 }

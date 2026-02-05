@@ -1,84 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>PayApp</title>
-  <link rel="stylesheet" href="style.css" />
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-  />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSJ Members</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<!-- ===== LANDING PAGE ===== -->
-<div id="landing-page">
-  <h1>PayApp</h1>
-  <p>Please choose your role</p>
-  <button id="member-btn">Member</button>
-  <button id="admin-btn" class="secondary-btn">Admin</button>
-</div>
-
-<!-- ===== MEMBER PAGE ===== -->
-<div id="member-page" style="display:none;">
-  <h2>Member Registration</h2>
-
-  <input id="fullName" placeholder="Full Name" />
-  <input id="contactNumber" placeholder="Contact Number" />
-  <input id="email" placeholder="Email Address" />
-  <input id="dsjNumber" placeholder="DSJ Account Number" />
-
-  <button id="submit-member">Submit</button>
-  <p id="member-msg"></p>
-
-  <button id="member-back-btn" class="secondary-btn">Back</button>
-</div>
-
-<!-- ===== ADMIN LOGIN ===== -->
-<div id="admin-page" style="display:none;">
-  <h2>Admin Login</h2>
-
-  <input id="admin-username" placeholder="Username" />
-  <input id="admin-password" type="password" placeholder="Password" />
-
-  <button id="admin-login">Login</button>
-  <p id="admin-msg"></p>
-
-  <button id="admin-back-btn" class="secondary-btn">Back</button>
-</div>
-
-<!-- ===== ADMIN VIEW ===== -->
-<div id="admin-view" style="display:none;">
-  <h2>Member List</h2>
-
-  <div class="members-container">
-    <ul id="clients-list"></ul>
+  <!-- ----------------- LANDING PAGE ----------------- -->
+  <div id="landing-page">
+    <h1>Welcome to DSJ Members System</h1>
+    <button id="member-btn">Register as Member</button>
+    <button id="admin-btn">Admin Login</button>
   </div>
 
-  <p id="total-count" class="total-count"></p>
+  <!-- ----------------- MEMBER REGISTRATION ----------------- -->
+  <div id="member-page" style="display:none;">
+    <h2>Member Registration</h2>
+    <form id="member-form">
+      <input id="name" placeholder="Full Name" required><br>
+      <input id="contact" placeholder="Contact Number" required><br>
+      <input id="email" placeholder="Email" required><br>
+      <input id="dsj_account" placeholder="DSJ Account Number" required><br>
+      <button type="submit">Register</button>
+      <button type="button" id="member-back-btn">Back</button>
+    </form>
+  </div>
 
-  <button id="logout-admin" class="secondary-btn">Logout</button>
-</div>
+  <!-- ----------------- ADMIN LOGIN ----------------- -->
+  <div id="admin-login-page" style="display:none;">
+    <h2>Admin Login</h2>
+    <form id="admin-login-form">
+      <input id="admin-username" placeholder="Username" required><br>
+      <input id="admin-password" type="password" placeholder="Password" required><br>
+      <button type="submit">Login</button>
+      <button type="button" id="admin-back-btn">Back</button>
+    </form>
+    <div id="admin-msg" style="color:red;margin-top:5px;"></div>
+  </div>
 
-<!-- DELETE CONFIRM MODAL -->
-<div id="delete-modal" class="modal hidden">
-  <div class="modal-content">
-    <h3>Delete Member?</h3>
-    <p>This action cannot be undone.</p>
+  <!-- ----------------- ADMIN DASHBOARD ----------------- -->
+  <div id="admin-view" style="display:none;">
+    <h2>Admin Dashboard</h2>
+    <p id="total-count">Total Members: 0</p>
+    <ul id="clients-list"></ul>
 
-    <div class="modal-actions">
-      <button id="cancel-delete" class="secondary-btn">Cancel</button>
-      <button id="confirm-delete" class="danger-btn">Delete</button>
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="hidden">
+      <p>Are you sure you want to delete this member?</p>
+      <button id="confirm-delete">Yes</button>
+      <button id="cancel-delete">No</button>
+    </div>
+
+    <!-- Undo Toast -->
+    <div id="undo-toast" class="hidden">
+      <span>Member deleted</span>
+      <button id="undo-btn">Undo</button>
     </div>
   </div>
-</div>
 
-<!-- UNDO TOAST -->
-<div id="undo-toast" class="undo-toast hidden">
-  Member deleted
-  <button id="undo-btn">UNDO</button>
-</div>
-
-<script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
