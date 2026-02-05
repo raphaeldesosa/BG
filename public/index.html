@@ -5,8 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DSJ Members</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* Quick inline CSS to ensure hidden elements work */
+    .hidden { display: none; }
+    #delete-modal, #undo-toast {
+      position: fixed;
+      background: #fff;
+      border: 1px solid #ccc;
+      padding: 15px;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    #undo-toast { top: 10%; }
+    .member-card {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin: 5px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .member-info { flex-grow: 1; }
+    .due-soon { color: red; font-weight: bold; }
+  </style>
 </head>
 <body>
+
   <!-- ----------------- LANDING PAGE ----------------- -->
   <div id="landing-page">
     <h1>Welcome to DSJ Members System</h1>
@@ -15,7 +42,7 @@
   </div>
 
   <!-- ----------------- MEMBER REGISTRATION ----------------- -->
-  <div id="member-page" style="display:none;">
+  <div id="member-page" class="hidden">
     <h2>Member Registration</h2>
     <form id="member-form">
       <input id="name" placeholder="Full Name" required><br>
@@ -28,7 +55,7 @@
   </div>
 
   <!-- ----------------- ADMIN LOGIN ----------------- -->
-  <div id="admin-login-page" style="display:none;">
+  <div id="admin-login-page" class="hidden">
     <h2>Admin Login</h2>
     <form id="admin-login-form">
       <input id="admin-username" placeholder="Username" required><br>
@@ -40,7 +67,7 @@
   </div>
 
   <!-- ----------------- ADMIN DASHBOARD ----------------- -->
-  <div id="admin-view" style="display:none;">
+  <div id="admin-view" class="hidden">
     <h2>Admin Dashboard</h2>
     <p id="total-count">Total Members: 0</p>
     <ul id="clients-list"></ul>
