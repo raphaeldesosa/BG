@@ -84,35 +84,50 @@ async function loadMembers() {
   const total = document.getElementById("total-count");
   if (!list || !total) return;
 
-  const res = await fetch("/clients");
-  const members = await res.json();
-  total.textContent = `Total Members: ${members.length}`;
   list.innerHTML = "";
 
-  members.forEach(member => {
-    const li = document.createElement("li");
-    li.className = "member-card";
+  try {
+    const res = await fetch("/clients");
+    const data = await res.json();
 
-    const dueDate = new Date(member.due_date);
-    const today = new Date();
-    const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-    const dueSoon = diffDays <= 7;
+    // Handle if data is not an array
+    const members = Array.isArray(data) ? data : data.clients;
+    if (!Array.isArray(members)) {
+      console.error("Invalid members data:", data);
+      total.textContent = "Total Members: 0";
+      return;
+    }
 
-    li.innerHTML = `
-      <div class="member-info">
-        <div class="member-name">${member.name}</div>
-        <div class="member-meta">DSJ: ${member.dsj_account}</div>
-        <div class="member-meta">Contact: ${member.contact}</div>
-        <div class="member-meta ${dueSoon ? "due-soon" : ""}">
-          Due: ${dueDate.toLocaleDateString()}
+    total.textContent = `Total Members: ${members.length}`;
+
+    members.forEach(member => {
+      const li = document.createElement("li");
+      li.className = "member-card";
+
+      const dueDate = new Date(member.due_date);
+      const today = new Date();
+      const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+      const dueSoon = diffDays <= 7;
+
+      li.innerHTML = `
+        <div class="member-info">
+          <div class="member-name">${member.name}</div>
+          <div class="member-meta">DSJ: ${member.dsj_account}</div>
+          <div class="member-meta">Contact: ${member.contact}</div>
+          <div class="member-meta ${dueSoon ? "due-soon" : ""}">
+            Due: ${dueDate.toLocaleDateString()}
+          </div>
         </div>
-      </div>
-      <button class="delete-btn">🗑️</button>
-    `;
+        <button class="delete-btn">🗑️</button>
+      `;
 
-    li.querySelector(".delete-btn").onclick = () => confirmDelete(member.id, li);
-    list.appendChild(li);
-  });
+      li.querySelector(".delete-btn").onclick = () => confirmDelete(member.id, li);
+      list.appendChild(li);
+    });
+  } catch (err) {
+    console.error("Failed to load members:", err);
+    total.textContent = "Total Members: 0";
+  }
 }
 
 /*********************************
