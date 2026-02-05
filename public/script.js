@@ -7,12 +7,17 @@ const adminLoginPage = document.getElementById("admin-login-page");
 const adminPage = document.getElementById("admin-page");
 
 /*********************************
- * GLOBAL ADMIN TOKEN
+ * GLOBAL STATE
  *********************************/
 let ADMIN_TOKEN = null;
+let deleteTarget = null;
+
+const modal = document.getElementById("delete-modal");
+const confirmBtn = document.getElementById("confirm-delete");
+const cancelBtn = document.getElementById("cancel-delete");
 
 /*********************************
- * PAGE SWITCHER (NULL-SAFE)
+ * PAGE SWITCHER
  *********************************/
 function showPage(page) {
   [landingPage, memberPage, adminLoginPage, adminPage].forEach(p => {
@@ -27,6 +32,7 @@ function showPage(page) {
 document.getElementById("member-btn")?.addEventListener("click", () => {
   showPage(memberPage);
 });
+
 document.getElementById("admin-btn")?.addEventListener("click", () => {
   showPage(adminLoginPage);
 });
@@ -34,25 +40,32 @@ document.getElementById("admin-btn")?.addEventListener("click", () => {
 /*********************************
  * BACK BUTTONS
  *********************************/
-document.getElementById("member-back-btn")?.addEventListener("click", () => showPage(landingPage));
-document.getElementById("admin-back-btn")?.addEventListener("click", () => showPage(landingPage));
+document.getElementById("member-back-btn")?.addEventListener("click", () => {
+  showPage(landingPage);
+});
+document.getElementById("admin-back-btn")?.addEventListener("click", () => {
+  showPage(landingPage);
+});
 
 /*********************************
  * MEMBER REGISTRATION
  *********************************/
-document.getElementById("member-form")?.addEventListener("submit", async (e) => {
+document.getElementById("member-form")?.addEventListener("submit", async e => {
   e.preventDefault();
+
   const data = {
     fullName: document.getElementById("name").value,
     contactNumber: document.getElementById("contact").value,
     email: document.getElementById("email").value,
     dsjNumber: document.getElementById("dsj_account").value
   };
+
   const res = await fetch("/client", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
   });
+
   if (res.ok) {
     alert("Registration successful! Due date is 2 months from today.");
     e.target.reset();
@@ -66,8 +79,9 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
 /*********************************
  * ADMIN LOGIN
  *********************************/
-document.getElementById("admin-login-form")?.addEventListener("submit", async (e) => {
+document.getElementById("admin-login-form")?.addEventListener("submit", async e => {
   e.preventDefault();
+
   const username = document.getElementById("admin-username").value;
   const password = document.getElementById("admin-password").value;
 
@@ -93,6 +107,7 @@ document.getElementById("admin-login-form")?.addEventListener("submit", async (e
 async function loadMembers() {
   const list = document.getElementById("clients-list");
   const total = document.getElementById("total-count");
+
   if (!list || !total) return;
   list.innerHTML = "";
 
@@ -103,8 +118,8 @@ async function loadMembers() {
 
     if (!res.ok) {
       const err = await res.json();
-      console.error("Error loading members:", err);
-      total.textContent = "Failed to load members";
+      total.textContent = "Error loading members";
+      console.error("Failed to load members:", err);
       return;
     }
 
@@ -117,7 +132,7 @@ async function loadMembers() {
 
       const dueDate = new Date(member.due_date);
       const today = new Date();
-      const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+      const diffDays = Math.ceil((dueDate - today) / (1000*60*60*24));
       const dueSoon = diffDays <= 7;
 
       li.innerHTML = `
@@ -138,31 +153,22 @@ async function loadMembers() {
 
   } catch (err) {
     console.error("Unexpected error:", err);
-    total.textContent = "Failed to load members";
+    total.textContent = "Error loading members";
   }
 }
 
 /*********************************
- * DELETE MODAL
+ * DELETE CONFIRMATION
  *********************************/
-let deleteTarget = null;
-const modal = document.getElementById("delete-modal");
-const confirmBtn = document.getElementById("confirm-delete");
-const cancelBtn = document.getElementById("cancel-delete");
-
 function requestDelete(id, card) {
   deleteTarget = { id, card };
   modal?.classList.remove("hidden");
 }
 
-cancelBtn?.addEventListener("click", () => {
-  modal?.classList.add("hidden");
-  deleteTarget = null;
-});
-
 confirmBtn?.addEventListener("click", async () => {
-  if (!deleteTarget) return;
   modal?.classList.add("hidden");
+
+  if (!deleteTarget) return;
 
   try {
     await fetch(`/client/${deleteTarget.id}`, {
@@ -171,9 +177,15 @@ confirmBtn?.addEventListener("click", async () => {
     });
     deleteTarget.card.remove();
     deleteTarget = null;
+    loadMembers();
   } catch (err) {
-    console.error("Failed to delete member:", err);
+    console.error("Delete failed:", err);
   }
+});
+
+cancelBtn?.addEventListener("click", () => {
+  modal?.classList.add("hidden");
+  deleteTarget = null;
 });
 
 /*********************************
