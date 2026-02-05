@@ -3,16 +3,16 @@
  *********************************/
 const landingPage = document.getElementById("landing-page");
 const memberPage = document.getElementById("member-page");
-const adminLoginPage = document.getElementById("admin-page"); // admin login
-const adminViewPage = document.getElementById("admin-view");
+const adminLoginPage = document.getElementById("admin-login-page");
+const adminPage = document.getElementById("admin-view");
 
-let adminToken = null; // store after login
+let adminToken = null;
 
 /*********************************
  * PAGE SWITCHER
  *********************************/
 function showPage(page) {
-  [landingPage, memberPage, adminLoginPage, adminViewPage].forEach(p => {
+  [landingPage, memberPage, adminLoginPage, adminPage].forEach(p => {
     if (p) p.style.display = "none";
   });
   if (page) page.style.display = "block";
@@ -33,12 +33,14 @@ document.getElementById("admin-back-btn")?.addEventListener("click", () => showP
 /*********************************
  * MEMBER REGISTRATION
  *********************************/
-document.getElementById("submit-member")?.addEventListener("click", async () => {
+document.getElementById("member-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
   const data = {
-    fullName: document.getElementById("fullName").value,
-    contactNumber: document.getElementById("contactNumber").value,
+    fullName: document.getElementById("name").value,
+    contactNumber: document.getElementById("contact").value,
     email: document.getElementById("email").value,
-    dsjNumber: document.getElementById("dsjNumber").value
+    dsjNumber: document.getElementById("dsj_account").value
   };
 
   const res = await fetch("/client", {
@@ -49,7 +51,7 @@ document.getElementById("submit-member")?.addEventListener("click", async () => 
 
   if (res.ok) {
     alert("Registration successful! Due date is 2 months from today.");
-    memberPage.querySelector("input").value = "";
+    e.target.reset();
     showPage(landingPage);
   } else {
     const err = await res.json();
@@ -60,7 +62,9 @@ document.getElementById("submit-member")?.addEventListener("click", async () => 
 /*********************************
  * ADMIN LOGIN
  *********************************/
-document.getElementById("admin-login")?.addEventListener("click", async () => {
+document.getElementById("admin-login-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
   const username = document.getElementById("admin-username").value;
   const password = document.getElementById("admin-password").value;
   const msg = document.getElementById("admin-msg");
@@ -75,7 +79,7 @@ document.getElementById("admin-login")?.addEventListener("click", async () => {
     const json = await res.json();
     adminToken = json.token;
     msg.textContent = "";
-    showPage(adminViewPage);
+    showPage(adminPage);
     loadMembers();
   } else {
     msg.textContent = "Invalid credentials";
@@ -88,11 +92,10 @@ document.getElementById("admin-login")?.addEventListener("click", async () => {
 async function loadMembers() {
   const list = document.getElementById("clients-list");
   const total = document.getElementById("total-count");
+
   if (!list || !total || !adminToken) return;
 
-  const res = await fetch("/clients", {
-    headers: { "x-admin-token": adminToken }
-  });
+  const res = await fetch("/clients", { headers: { "x-admin-token": adminToken } });
   const members = await res.json();
 
   list.innerHTML = "";
@@ -118,7 +121,6 @@ async function loadMembers() {
       </div>
       <button class="delete-btn">🗑️</button>
     `;
-
     li.querySelector(".delete-btn").onclick = () => requestDelete(member.id, li, member);
     list.appendChild(li);
   });
@@ -154,10 +156,7 @@ confirmBtn?.addEventListener("click", async () => {
   toast?.classList.remove("hidden");
 
   undoTimer = setTimeout(async () => {
-    await fetch(`/client/${deleteTarget.id}`, {
-      method: "DELETE",
-      headers: { "x-admin-token": adminToken }
-    });
+    await fetch(`/client/${deleteTarget.id}`, { method: "DELETE", headers: { "x-admin-token": adminToken } });
     deletedCache = null;
     loadMembers();
   }, 5000);
@@ -167,12 +166,7 @@ undoBtn?.addEventListener("click", async () => {
   clearTimeout(undoTimer);
   toast.classList.add("hidden");
 
-  await fetch("/client", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(deletedCache)
-  });
-
+  await fetch("/client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(deletedCache) });
   loadMembers();
 });
 
