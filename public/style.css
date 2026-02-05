@@ -127,6 +127,90 @@ button:hover {
   color: #b52b27;
 }
 
+/* ===== DELETE MODAL ===== */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-content {
+  background: white;
+  padding: 22px;
+  border-radius: 14px;
+  width: 90%;
+  max-width: 360px;
+  text-align: center;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+}
+
+.modal-content h3 {
+  margin: 0 0 8px;
+}
+
+.modal-content p {
+  font-size: 14px;
+  color: #666;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.danger-btn {
+  background: #dc3545;
+}
+
+.danger-btn:hover {
+  background: #b02a37;
+}
+
+/* ===== UNDO TOAST ===== */
+.undo-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #222;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+  z-index: 1001;
+}
+
+.undo-toast.hidden {
+  display: none;
+}
+
+.undo-toast button {
+  background: none;
+  border: none;
+  color: #0d6efd;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ===== DELETE ANIMATION ===== */
+.member-card.removing {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: all 0.3s ease;
+}
+
 /* ===============================
    MOBILE RESPONSIVE (PHONES)
    =============================== */
