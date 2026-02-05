@@ -35,7 +35,8 @@ document.getElementById("member-back-btn")?.addEventListener("click", () => {
   showPage(landingPage);
 });
 
-document.getElementById("admin-back-btn")?.addEventListener("click", () => {
+// BACK BUTTON (ADMIN DASHBOARD)
+document.getElementById("admin-dashboard-back-btn")?.addEventListener("click", () => {
   showPage(landingPage);
 });
 
