@@ -238,16 +238,16 @@ button:hover {
 .delete-btn {
   align-self: flex-end;
   font-size: 22px;
-  padding: 4px;
-  border-radius: 6px;
+  padding: 6px;
+  border-radius: 8px;
   background: transparent;
   box-shadow: none;
   color: #dc3545;
 }
 
 .delete-btn:hover {
-  color: #b02a37;
-  transform: scale(1.15);
+  background: rgba(220, 53, 69, 0.1);
+  transform: scale(1.1);
 }
 
   /* ===== TOTAL COUNT ===== */
