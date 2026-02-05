@@ -53,7 +53,7 @@ app.post("/client", async (req, res) => {
 // Admin login
 app.post("/admin/login", (req, res) => {
   const { username, password } = req.body;
-  if (username === "admin" && password === "1234") {
+  if (username === "admin" && password === "adminpass0205") {
     return res.json({ token: ADMIN_TOKEN });
   }
   return res.status(401).json({ error: "Invalid credentials" });

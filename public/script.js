@@ -1,18 +1,21 @@
 /*********************************
- * PAGE SELECTORS
+ * SAFE PAGE SELECTORS
  *********************************/
 const landingPage = document.getElementById("landing-page");
 const memberPage = document.getElementById("member-page");
 const adminLoginPage = document.getElementById("admin-login-page");
-const adminPage = document.getElementById("admin-view");
+const adminViewPage = document.getElementById("admin-view");
 
+/*********************************
+ * ADMIN TOKEN STORAGE
+ *********************************/
 let adminToken = null;
 
 /*********************************
- * PAGE SWITCHER
+ * PAGE SWITCHER (NULL-SAFE)
  *********************************/
 function showPage(page) {
-  [landingPage, memberPage, adminLoginPage, adminPage].forEach(p => {
+  [landingPage, memberPage, adminLoginPage, adminViewPage].forEach(p => {
     if (p) p.style.display = "none";
   });
   if (page) page.style.display = "block";
@@ -79,10 +82,10 @@ document.getElementById("admin-login-form")?.addEventListener("submit", async (e
     const json = await res.json();
     adminToken = json.token;
     msg.textContent = "";
-    showPage(adminPage);
+    showPage(adminViewPage);
     loadMembers();
   } else {
-    msg.textContent = "Invalid credentials";
+    msg.textContent = "Invalid admin credentials";
   }
 });
 
@@ -90,14 +93,19 @@ document.getElementById("admin-login-form")?.addEventListener("submit", async (e
  * LOAD MEMBERS
  *********************************/
 async function loadMembers() {
+  if (!adminToken) return;
+
   const list = document.getElementById("clients-list");
   const total = document.getElementById("total-count");
+  if (!list || !total) return;
 
-  if (!list || !total || !adminToken) return;
+  const res = await fetch("/clients", {
+    headers: { "x-admin-token": adminToken }
+  });
 
-  const res = await fetch("/clients", { headers: { "x-admin-token": adminToken } });
+  if (!res.ok) return;
+
   const members = await res.json();
-
   list.innerHTML = "";
   total.textContent = `Total Members: ${members.length}`;
 
@@ -121,6 +129,7 @@ async function loadMembers() {
       </div>
       <button class="delete-btn">🗑️</button>
     `;
+
     li.querySelector(".delete-btn").onclick = () => requestDelete(member.id, li, member);
     list.appendChild(li);
   });
@@ -142,7 +151,7 @@ const undoBtn = document.getElementById("undo-btn");
 function requestDelete(id, card, member) {
   deleteTarget = { id, card };
   deletedCache = member;
-  modal?.classList.remove("hidden");
+  modal.classList.remove("hidden");
 }
 
 cancelBtn?.addEventListener("click", () => {
@@ -153,10 +162,13 @@ cancelBtn?.addEventListener("click", () => {
 confirmBtn?.addEventListener("click", async () => {
   modal.classList.add("hidden");
   deleteTarget.card.remove();
-  toast?.classList.remove("hidden");
+  toast.classList.remove("hidden");
 
   undoTimer = setTimeout(async () => {
-    await fetch(`/client/${deleteTarget.id}`, { method: "DELETE", headers: { "x-admin-token": adminToken } });
+    await fetch(`/client/${deleteTarget.id}`, {
+      method: "DELETE",
+      headers: { "x-admin-token": adminToken }
+    });
     deletedCache = null;
     loadMembers();
   }, 5000);
@@ -166,7 +178,12 @@ undoBtn?.addEventListener("click", async () => {
   clearTimeout(undoTimer);
   toast.classList.add("hidden");
 
-  await fetch("/client", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(deletedCache) });
+  await fetch("/client", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(deletedCache)
+  });
+
   loadMembers();
 });
 
