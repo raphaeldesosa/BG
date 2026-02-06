@@ -28,6 +28,21 @@ function formatDate(value) {
   return date.toLocaleDateString();
 }
 
+function getActivationLabel(member) {
+  return member.is_activated ? "Activated" : "Pending";
+}
+
+function buildActivationMeta(member) {
+  if (!member.is_activated) {
+    return '<div class="member-meta">Status: Pending activation</div>';
+  }
+
+  return `
+    <div class="member-meta">Status: Activated</div>
+    <div class="member-meta">Activated: ${formatDate(member.activated_at)}</div>
+  `;
+}
+
 function buildProofImageTag(member) {
   if (!member.proof_image_data || !member.proof_mime) {
     return '<div class="member-meta">Proof: Not uploaded</div>';
@@ -119,7 +134,7 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
   });
 
   if (res.ok) {
-    alert("Registration successful! Due date is 2 months from today.");
+    alert("Registration successful! Loan is pending activation by admin.");
     e.target.reset();
     showPage(landingPage);
   } else {
@@ -190,10 +205,11 @@ async function loadMembers() {
     const li = document.createElement("li");
     li.className = "member-card";
 
-    const dueDate = new Date(member.due_date);
+    const hasDueDate = Boolean(member.due_date);
+    const dueDate = hasDueDate ? new Date(member.due_date) : null;
     const today = new Date();
-    const diffDays = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
-    const dueSoon = diffDays <= 7;
+    const diffDays = dueDate ? Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24)) : null;
+    const dueSoon = dueDate ? diffDays <= 7 : false;
 
     li.innerHTML = `
       <div class="member-info">
@@ -202,18 +218,35 @@ async function loadMembers() {
         <div class="member-meta">Wallet Address: ${member.wallet_address || "-"}</div>
         <div class="member-meta">Contact: ${member.contact_number}</div>
         <div class="member-meta">Loaned Amount: ₱${Number(member.borrow_amount || 0).toLocaleString()}</div>
+         ${buildActivationMeta(member)}
         <div class="member-meta ${dueSoon ? "due-soon" : ""}">
-          Due: ${formatDate(member.due_date)}
+           Due: ${hasDueDate ? formatDate(member.due_date) : "Starts after activation"}
         </div>
         ${buildProofImageTag(member)}
       </div>
        <div class="member-actions">
+       <button class="activate-btn" title="Toggle activation" ${member.is_activated ? "disabled" : ""}>${getActivationLabel(member)}</button>
         <button class="edit-loan-btn" title="Edit loan amount">Edit Loan</button>
         <button class="delete-btn" title="Move to history">Archive</button>
       </div>
     `;
 
     li.querySelector(".delete-btn").onclick = () => requestArchive(member.id, li);
+    li.querySelector(".activate-btn").onclick = async () => {
+      const activateRes = await fetch(`/client/${member.id}/activate`, {
+        method: "PATCH",
+        headers: { "x-admin-token": ADMIN_TOKEN }
+      });
+
+      if (!activateRes.ok) {
+        const err = await activateRes.json().catch(() => ({ error: "Failed to activate member." }));
+        alert(err.error || "Failed to activate member.");
+        return;
+      }
+
+      await loadMembers();
+    };
+    
     li.querySelector(".edit-loan-btn").onclick = async () => {
       const currentAmount = Number(member.borrow_amount || 0);
       const input = prompt(`Enter new loan amount for ${member.full_name}:`, String(currentAmount));

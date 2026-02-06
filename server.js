@@ -24,6 +24,8 @@ async function initDatabase() {
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS proof_mime TEXT");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ");
+    await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_activated BOOLEAN DEFAULT FALSE");
+    await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_key ON clients(wallet_address)");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_dsj_number_key ON clients(dsj_number)");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_normalized_key ON clients (LOWER(TRIM(wallet_address)))");
@@ -69,9 +71,8 @@ app.post("/client", async (req, res) => {
   }
 
   const borrowAmount = 100;
-  const borrowDate = new Date();
-  const dueDate = new Date();
-  dueDate.setMonth(dueDate.getMonth() + 2);
+  const borrowDate = null;
+  const dueDate = null;
 
   try {
     const result = await pool.query(
@@ -125,7 +126,8 @@ app.get("/clients", async (req, res) => {
   try {
     const result = await pool.query(
         `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, borrow_amount, borrow_date, due_date,
-        proof_mime, encode(proof_image, 'base64') AS proof_image_data
+        proof_mime, encode(proof_image, 'base64') AS proof_image_data,
+        is_activated, activated_at
         FROM clients
         WHERE is_archived = FALSE OR is_archived IS NULL
         ORDER BY created_at DESC`
@@ -145,7 +147,8 @@ app.get("/clients/history", async (req, res) => {
   try {
      const result = await pool.query(
       `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, borrow_amount, borrow_date, due_date,
-       proof_mime, encode(proof_image, 'base64') AS proof_image_data, archived_at
+       proof_mime, encode(proof_image, 'base64') AS proof_image_data, archived_at,
+       is_activated, activated_at
        FROM clients
        WHERE is_archived = TRUE
        ORDER BY archived_at DESC NULLS LAST, created_at DESC`
@@ -193,6 +196,38 @@ app.patch("/client/:id/loan", async (req, res) => {
     const result = await pool.query(
       "UPDATE clients SET borrow_amount = $1 WHERE id = $2 RETURNING id, borrow_amount",
       [amount, req.params.id]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    res.json({ client: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// Activate member loan (admin only)
+app.patch("/client/:id/activate", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+
+  const borrowDate = new Date();
+  const dueDate = new Date(borrowDate);
+  dueDate.setMonth(dueDate.getMonth() + 2);
+
+  try {
+    const result = await pool.query(
+      `UPDATE clients
+       SET is_activated = TRUE,
+           activated_at = COALESCE(activated_at, $1),
+           borrow_date = COALESCE(borrow_date, $1),
+           due_date = COALESCE(due_date, $2)
+       WHERE id = $3
+       RETURNING id, is_activated, activated_at, borrow_date, due_date`,
+      [borrowDate, dueDate, req.params.id]
     );
 
     if (!result.rowCount) {

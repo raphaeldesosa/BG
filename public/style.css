@@ -120,6 +120,19 @@ button:hover {
   align-items: flex-end;
 }
 
+.activate-btn {
+  background: #fd7e14;
+}
+
+.activate-btn:hover {
+  background: #ca6510;
+}
+
+.activate-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
 .edit-loan-btn {
   background: #198754;
 }
