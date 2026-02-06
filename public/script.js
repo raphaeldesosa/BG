@@ -246,7 +246,7 @@ async function loadMembers() {
 
       await loadMembers();
     };
-    
+
     li.querySelector(".edit-loan-btn").onclick = async () => {
       const currentAmount = Number(member.borrow_amount || 0);
       const input = prompt(`Enter new loan amount for ${member.full_name}:`, String(currentAmount));
@@ -313,7 +313,30 @@ async function loadHistory() {
         <div class="member-meta">Archived: ${formatDate(member.archived_at)}</div>
         ${buildProofImageTag(member)}
       </div>
+       <div class="member-actions">
+        <button class="danger-btn delete-history-btn" title="Delete permanently">Delete</button>
+      </div>
     `;
+    
+    li.querySelector(".delete-history-btn").onclick = async () => {
+      const shouldDelete = confirm(`Delete ${member.full_name} permanently from archived history?`);
+      if (!shouldDelete) return;
+
+      const deleteRes = await fetch(`/client/${member.id}`, {
+        method: "DELETE",
+        headers: { "x-admin-token": ADMIN_TOKEN }
+      });
+
+      if (!deleteRes.ok) {
+        const err = await deleteRes.json().catch(() => ({ error: "Failed to delete archived member." }));
+        alert(err.error || "Failed to delete archived member.");
+        return;
+      }
+
+      li.remove();
+      total.textContent = `Archived Members: ${Math.max(0, members.length - 1)}`;
+      await loadHistory();
+    };
 
     list.appendChild(li);
   });

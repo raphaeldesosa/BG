@@ -182,6 +182,28 @@ app.patch("/client/:id/archive", async (req, res) => {
   }
 });
 
+// Permanently delete member from archived history (admin only)
+app.delete("/client/:id", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+
+  try {
+    const result = await pool.query(
+      "DELETE FROM clients WHERE id = $1 AND is_archived = TRUE RETURNING id",
+      [req.params.id]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: "Archived client not found" });
+    }
+
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 // Update member loan amount (admin only)
 app.patch("/client/:id/loan", async (req, res) => {
   const token = req.headers["x-admin-token"];
