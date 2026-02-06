@@ -134,8 +134,8 @@ let ADMIN_TOKEN = null;
 document.getElementById("admin-login-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const username = document.getElementById("admin-username").value;
-  const password = document.getElementById("admin-password").value;
+  const username = document.getElementById("admin-username").value.trim();
+  const password = document.getElementById("admin-password").value.trim();
   const msg = document.getElementById("admin-msg");
 
   const res = await fetch("/admin/login", {
@@ -150,9 +150,16 @@ document.getElementById("admin-login-form")?.addEventListener("submit", async (e
     msg.textContent = "";
     showPage(adminPage);
     loadMembers();
-  } else {
-    msg.textContent = "Invalid admin credentials";
+    return;
   }
+
+  if (res.status === 401) {
+    msg.textContent = "Invalid admin credentials";
+    return;
+  }
+
+  const err = await res.json().catch(() => ({ error: "Unable to login right now." }));
+  msg.textContent = err.error || "Unable to login right now.";
 });
 
 /*********************************
