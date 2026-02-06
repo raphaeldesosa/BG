@@ -201,15 +201,48 @@ async function loadMembers() {
         <div class="member-meta">DSJ Account No: ${member.dsj_number}</div>
         <div class="member-meta">Wallet Address: ${member.wallet_address || "-"}</div>
         <div class="member-meta">Contact: ${member.contact_number}</div>
+        <div class="member-meta">Loaned Amount: ₱${Number(member.borrow_amount || 0).toLocaleString()}</div>
         <div class="member-meta ${dueSoon ? "due-soon" : ""}">
           Due: ${formatDate(member.due_date)}
         </div>
         ${buildProofImageTag(member)}
       </div>
-      <button class="delete-btn" title="Move to history">Archive</button>
+       <div class="member-actions">
+        <button class="edit-loan-btn" title="Edit loan amount">Edit Loan</button>
+        <button class="delete-btn" title="Move to history">Archive</button>
+      </div>
     `;
 
     li.querySelector(".delete-btn").onclick = () => requestArchive(member.id, li);
+    li.querySelector(".edit-loan-btn").onclick = async () => {
+      const currentAmount = Number(member.borrow_amount || 0);
+      const input = prompt(`Enter new loan amount for ${member.full_name}:`, String(currentAmount));
+      if (input === null) return;
+
+      const nextAmount = Number(input.trim());
+      if (!Number.isFinite(nextAmount) || nextAmount < 0) {
+        alert("Please enter a valid loan amount.");
+        return;
+      }
+
+      const updateRes = await fetch(`/client/${member.id}/loan`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-token": ADMIN_TOKEN
+        },
+        body: JSON.stringify({ borrowAmount: nextAmount })
+      });
+
+      if (!updateRes.ok) {
+        const err = await updateRes.json().catch(() => ({ error: "Failed to update loan amount." }));
+        alert(err.error || "Failed to update loan amount.");
+        return;
+      }
+
+      await loadMembers();
+    };
+
     list.appendChild(li);
   });
 }

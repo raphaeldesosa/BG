@@ -113,6 +113,21 @@ button:hover {
   font-weight: 600;
 }
 
+.member-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.edit-loan-btn {
+  background: #198754;
+}
+
+.edit-loan-btn:hover {
+  background: #146c43;
+}
+
 .delete-btn {
   background: none;
   border: none;
@@ -308,11 +323,29 @@ button:hover {
     font-size: 14px;
   }
 
+   .member-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .edit-loan-btn,
+
   .delete-btn {
     align-self: flex-end;
-    font-size: 20px;
-    padding: 6px;
+    font-size: 15px;
+    padding: 8px 10px;
     border-radius: 8px;
+     transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  .edit-loan-btn {
+    background: #198754;
+    color: #fff;
+  }
+
+  .delete-btn {
     background: transparent;
     color: #dc3545;
     transition: transform 0.2s ease, background 0.2s ease;
@@ -320,7 +353,7 @@ button:hover {
 
   .delete-btn:hover {
     background: rgba(220, 53, 69, 0.1);
-    transform: scale(1.1);
+    transform: scale(1.05);
   }
 
   .total-count {

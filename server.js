@@ -179,6 +179,34 @@ app.patch("/client/:id/archive", async (req, res) => {
   }
 });
 
+// Update member loan amount (admin only)
+app.patch("/client/:id/loan", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+
+  const amount = Number(req.body?.borrowAmount);
+  if (!Number.isFinite(amount) || amount < 0) {
+    return res.status(400).json({ error: "Loan amount must be a valid number." });
+  }
+
+  try {
+    const result = await pool.query(
+      "UPDATE clients SET borrow_amount = $1 WHERE id = $2 RETURNING id, borrow_amount",
+      [amount, req.params.id]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    res.json({ client: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+
 // Serve static frontend
 app.use(express.static(path.join(__dirname, "public")));
 app.get("*", (req, res) => {
