@@ -198,8 +198,8 @@ async function loadMembers() {
     li.innerHTML = `
       <div class="member-info">
         <div class="member-name">${member.full_name}</div>
-        <div class="member-meta">DSJ: ${member.dsj_number}</div>
-        <div class="member-meta">Wallet: ${member.wallet_address || "-"}</div>
+        <div class="member-meta">DSJ Account No: ${member.dsj_number}</div>
+        <div class="member-meta">Wallet Address: ${member.wallet_address || "-"}</div>
         <div class="member-meta">Contact: ${member.contact_number}</div>
         <div class="member-meta ${dueSoon ? "due-soon" : ""}">
           Due: ${formatDate(member.due_date)}
