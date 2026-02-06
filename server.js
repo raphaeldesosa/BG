@@ -25,6 +25,8 @@ async function initDatabase() {
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_key ON clients(wallet_address)");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_dsj_number_key ON clients(dsj_number)");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_normalized_key ON clients (LOWER(TRIM(wallet_address)))");
   } catch (err) {
     console.error("Database initialization warning:", err.message);
   }
@@ -40,8 +42,10 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "adminpass0205";
 // Add member
 app.post("/client", async (req, res) => {
    const { fullName, email, contactNumber, dsjNumber, walletAddress, proofImageData, proofImageType } = req.body;
+   const normalizedDsjNumber = (dsjNumber || "").trim();
+   const normalizedWalletAddress = (walletAddress || "").trim();
 
-   if (!fullName || !email || !contactNumber || !dsjNumber || !walletAddress || !proofImageData || !proofImageType) {
+    if (!fullName || !email || !contactNumber || !normalizedDsjNumber || !normalizedWalletAddress || !proofImageData || !proofImageType) {
     return res.status(400).json({ error: "All fields required" });
   }
 
@@ -79,8 +83,8 @@ app.post("/client", async (req, res) => {
         fullName,
         email,
         contactNumber,
-        dsjNumber,
-        walletAddress,
+        normalizedDsjNumber,
+        normalizedWalletAddress,
         proofImageBuffer,
         proofImageType,
         borrowAmount,
