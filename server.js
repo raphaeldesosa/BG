@@ -6,13 +6,27 @@ const { Pool } = require("pg");
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "5mb" }));
+
+const MAX_PROOF_IMAGE_SIZE = 2 * 1024 * 1024;
+const allowedMimeTypes = ["image/jpeg", "image/png"];
 
 // ------------------- DATABASE -------------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }
 });
+
+async function initDatabase() {
+  try {
+    await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS wallet_address TEXT");
+    await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS proof_image BYTEA");
+    await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS proof_mime TEXT");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_key ON clients(wallet_address)");
+  } catch (err) {
+    console.error("Database initialization warning:", err.message);
+  }
+}
 
 // ------------------- ADMIN TOKEN -------------------
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "supersecret123";
@@ -21,10 +35,29 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "supersecret123";
 
 // Add member
 app.post("/client", async (req, res) => {
-  const { fullName, email, contactNumber, dsjNumber } = req.body;
+   const { fullName, email, contactNumber, dsjNumber, walletAddress, proofImageData, proofImageType } = req.body;
 
-  if (!fullName || !email || !contactNumber || !dsjNumber) {
+   if (!fullName || !email || !contactNumber || !dsjNumber || !walletAddress || !proofImageData || !proofImageType) {
     return res.status(400).json({ error: "All fields required" });
+  }
+
+    if (!allowedMimeTypes.includes(proofImageType)) {
+    return res.status(400).json({ error: "Only JPEG and PNG files are allowed." });
+  }
+
+  let proofImageBuffer;
+  try {
+    proofImageBuffer = Buffer.from(proofImageData, "base64");
+  } catch (_err) {
+    return res.status(400).json({ error: "Invalid image upload." });
+  }
+
+  if (!proofImageBuffer.length) {
+    return res.status(400).json({ error: "Invalid image upload." });
+  }
+
+  if (proofImageBuffer.length > MAX_PROOF_IMAGE_SIZE) {
+    return res.status(400).json({ error: "Image must be 2MB or smaller." });
   }
 
   const borrowAmount = 100;
@@ -35,14 +68,28 @@ app.post("/client", async (req, res) => {
   try {
     const result = await pool.query(
       `INSERT INTO clients 
-       (full_name, email, contact_number, dsj_number, borrow_amount, borrow_date, due_date)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING *`,
-      [fullName, email, contactNumber, dsjNumber, borrowAmount, borrowDate, dueDate]
+       (full_name, email, contact_number, dsj_number, wallet_address, proof_image, proof_mime, borrow_amount, borrow_date, due_date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING id, full_name, email, contact_number, dsj_number, wallet_address, borrow_amount, borrow_date, due_date`,
+      [
+        fullName,
+        email,
+        contactNumber,
+        dsjNumber,
+        walletAddress,
+        proofImageBuffer,
+        proofImageType,
+        borrowAmount,
+        borrowDate,
+        dueDate
+      ]      
     );
     res.json({ client: result.rows[0] });
   } catch (err) {
     if (err.code === "23505") {
+       if ((err.constraint && err.constraint.includes("wallet")) || (err.detail && err.detail.includes("wallet_address"))) {
+        return res.status(400).json({ error: "This wallet address is already registered." });
+      }
       return res.status(400).json({ error: "This DSJ account number is already registered." });
     }
     console.error(err);
@@ -66,7 +113,7 @@ app.get("/clients", async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT id, full_name, email, contact_number, dsj_number, borrow_amount, borrow_date, due_date FROM clients ORDER BY created_at DESC"
+       "SELECT id, full_name, email, contact_number, dsj_number, wallet_address, borrow_amount, borrow_date, due_date FROM clients ORDER BY created_at DESC"
     );
     res.json(result.rows);
   } catch (err) {
@@ -97,4 +144,6 @@ app.get("*", (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+initDatabase().finally(() => {
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+});

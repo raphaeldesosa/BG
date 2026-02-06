@@ -5,6 +5,8 @@ const landingPage = document.getElementById("landing-page");
 const memberPage = document.getElementById("member-page");
 const adminLoginPage = document.getElementById("admin-login-page");
 const adminPage = document.getElementById("admin-view"); // match HTML ID
+const maxProofSizeBytes = 2 * 1024 * 1024;
+const allowedImageTypes = ["image/jpeg", "image/png"];
 
 /*********************************
  * PAGE SWITCHER (NULL-SAFE)
@@ -35,6 +37,11 @@ document.getElementById("member-back-btn")?.addEventListener("click", () => {
   showPage(landingPage);
 });
 
+// BACK BUTTON (ADMIN LOGIN)
+document.getElementById("admin-back-btn")?.addEventListener("click", () => {
+  showPage(landingPage);
+});
+
 // BACK BUTTON (ADMIN DASHBOARD)
 document.getElementById("admin-dashboard-back-btn")?.addEventListener("click", () => {
   showPage(landingPage);
@@ -46,11 +53,41 @@ document.getElementById("admin-dashboard-back-btn")?.addEventListener("click", (
 document.getElementById("member-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
+   const proofImage = document.getElementById("proof_image").files[0];
+
+  if (!proofImage) {
+    alert("Please upload a proof image.");
+    return;
+  }
+
+  if (!allowedImageTypes.includes(proofImage.type)) {
+    alert("Only JPEG and PNG files are allowed.");
+    return;
+  }
+
+  if (proofImage.size > maxProofSizeBytes) {
+    alert("Proof image must be 2MB or smaller.");
+    return;
+  }
+
+  const proofImageData = await proofImage.arrayBuffer();
+  const bytes = new Uint8Array(proofImageData);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  const base64Proof = btoa(binary);
+
+
   const data = {
     fullName: document.getElementById("name").value,
     contactNumber: document.getElementById("contact").value,
     email: document.getElementById("email").value,
-    dsjNumber: document.getElementById("dsj_account").value
+    dsjNumber: document.getElementById("dsj_account").value,
+    walletAddress: document.getElementById("wallet_address").value,
+    proofImageData: base64Proof,
+    proofImageType: proofImage.type
   };
 
   const res = await fetch("/client", {
@@ -135,6 +172,7 @@ async function loadMembers() {
       <div class="member-info">
         <div class="member-name">${member.full_name}</div>
         <div class="member-meta">DSJ: ${member.dsj_number}</div>
+        <div class="member-meta">Wallet: ${member.wallet_address || "-"}</div>
         <div class="member-meta">Contact: ${member.contact_number}</div>
         <div class="member-meta ${dueSoon ? "due-soon" : ""}">
           Due: ${dueDate.toLocaleDateString()}
