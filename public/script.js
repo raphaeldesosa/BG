@@ -4,7 +4,8 @@
 const landingPage = document.getElementById("landing-page");
 const memberPage = document.getElementById("member-page");
 const adminLoginPage = document.getElementById("admin-login-page");
-const adminPage = document.getElementById("admin-view"); // match HTML ID
+const adminPage = document.getElementById("admin-view");
+const adminHistoryPage = document.getElementById("admin-history-page");
 const maxProofSizeBytes = 2 * 1024 * 1024;
 const allowedImageTypes = ["image/jpeg", "image/png"];
 
@@ -12,16 +13,32 @@ const allowedImageTypes = ["image/jpeg", "image/png"];
  * PAGE SWITCHER (NULL-SAFE)
  *********************************/
 function showPage(page) {
-  [landingPage, memberPage, adminLoginPage, adminPage].forEach(p => {
+  [landingPage, memberPage, adminLoginPage, adminPage, adminHistoryPage].forEach(p => {
     if (p) p.style.display = "none";
   });
 
   if (page) page.style.display = "block";
 }
 
-/*********************************
- * LANDING BUTTONS
- *********************************/
+
+function formatDate(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString();
+}
+
+function buildProofImageTag(member) {
+  if (!member.proof_image_data || !member.proof_mime) {
+    return '<div class="member-meta">Proof: Not uploaded</div>';
+  }
+
+  return `
+    <div class="member-meta">Proof:</div>
+    <img class="proof-image" src="data:${member.proof_mime};base64,${member.proof_image_data}" alt="Proof uploaded by ${member.full_name}">
+  `;
+}
+
 document.getElementById("member-btn")?.addEventListener("click", () => {
   showPage(memberPage);
 });
@@ -30,30 +47,35 @@ document.getElementById("admin-btn")?.addEventListener("click", () => {
   showPage(adminLoginPage);
 });
 
-/*********************************
- * BACK BUTTONS
- *********************************/
+
 document.getElementById("member-back-btn")?.addEventListener("click", () => {
   showPage(landingPage);
 });
 
-// BACK BUTTON (ADMIN LOGIN)
+
 document.getElementById("admin-back-btn")?.addEventListener("click", () => {
   showPage(landingPage);
 });
 
-// BACK BUTTON (ADMIN DASHBOARD)
+
 document.getElementById("admin-dashboard-back-btn")?.addEventListener("click", () => {
   showPage(landingPage);
 });
 
-/*********************************
- * MEMBER REGISTRATION
- *********************************/
+document.getElementById("view-history-btn")?.addEventListener("click", async () => {
+  showPage(adminHistoryPage);
+  await loadHistory();
+});
+
+document.getElementById("history-back-btn")?.addEventListener("click", async () => {
+  showPage(adminPage);
+  await loadMembers();
+});
+
 document.getElementById("member-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-   const proofImage = document.getElementById("proof_image").files[0];
+    const proofImage = document.getElementById("proof_image").files[0];
 
   if (!proofImage) {
     alert("Please upload a proof image.");
@@ -106,9 +128,7 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
   }
 });
 
-/*********************************
- * ADMIN LOGIN
- *********************************/
+
 let ADMIN_TOKEN = null;
 
 document.getElementById("admin-login-form")?.addEventListener("submit", async (e) => {
@@ -175,79 +195,97 @@ async function loadMembers() {
         <div class="member-meta">Wallet: ${member.wallet_address || "-"}</div>
         <div class="member-meta">Contact: ${member.contact_number}</div>
         <div class="member-meta ${dueSoon ? "due-soon" : ""}">
-          Due: ${dueDate.toLocaleDateString()}
+          Due: ${formatDate(member.due_date)}
         </div>
+        ${buildProofImageTag(member)}
       </div>
-      <button class="delete-btn">🗑️</button>
+      <button class="delete-btn" title="Move to history">Archive</button>
     `;
 
-    li.querySelector(".delete-btn").onclick = () => requestDelete(member.id, li, member);
+    li.querySelector(".delete-btn").onclick = () => requestArchive(member.id, li);
     list.appendChild(li);
   });
 }
 
-/*********************************
- * DELETE + UNDO
- *********************************/
-let deleteTarget = null;
-let deletedCache = null;
-let undoTimer = null;
+async function loadHistory() {
+  const list = document.getElementById("history-list");
+  const total = document.getElementById("history-count");
+
+  if (!list || !total || !ADMIN_TOKEN) return;
+
+  list.innerHTML = "";
+
+  const res = await fetch("/clients/history", {
+    headers: { "x-admin-token": ADMIN_TOKEN }
+  });
+
+  if (!res.ok) {
+    list.innerHTML = "<li>Failed to load history.</li>";
+    total.textContent = "Archived Members: 0";
+    return;
+  }
+
+  const members = await res.json();
+  total.textContent = `Archived Members: ${members.length}`;
+
+  members.forEach(member => {
+    const li = document.createElement("li");
+    li.className = "member-card";
+
+    li.innerHTML = `
+      <div class="member-info">
+        <div class="member-name">${member.full_name}</div>
+        <div class="member-meta">DSJ: ${member.dsj_number}</div>
+        <div class="member-meta">Wallet: ${member.wallet_address || "-"}</div>
+        <div class="member-meta">Archived: ${formatDate(member.archived_at)}</div>
+        ${buildProofImageTag(member)}
+      </div>
+    `;
+
+    list.appendChild(li);
+  });
+}
+
+let archiveTarget = null;
 
 const modal = document.getElementById("delete-modal");
 const confirmBtn = document.getElementById("confirm-delete");
 const cancelBtn = document.getElementById("cancel-delete");
-const toast = document.getElementById("undo-toast");
-const undoBtn = document.getElementById("undo-btn");
 
-// Hide modal/toast initially
+
 modal.classList.add("hidden");
-toast.classList.add("hidden");
 
-function requestDelete(id, card, member) {
-  deleteTarget = { id, card };
-  deletedCache = member;
+function requestArchive(id, card) {
+  archiveTarget = { id, card };
   modal.classList.remove("hidden");
 }
 
 cancelBtn?.addEventListener("click", () => {
   modal.classList.add("hidden");
-  deleteTarget = null;
+  archiveTarget = null;
 });
 
 confirmBtn?.addEventListener("click", async () => {
+  if (!archiveTarget || !ADMIN_TOKEN) return;
+
+  const target = archiveTarget;
+  archiveTarget = null;
   modal.classList.add("hidden");
+  
 
-  deleteTarget.card.remove();
-  toast.classList.remove("hidden");
-
-  undoTimer = setTimeout(async () => {
-    await fetch(`/client/${deleteTarget.id}`, {
-      method: "DELETE",
-      headers: { "x-admin-token": ADMIN_TOKEN }
-    });
-    deletedCache = null;
-    loadMembers();
-    toast.classList.add("hidden");
-  }, 5000);
-});
-
-undoBtn?.addEventListener("click", async () => {
-  clearTimeout(undoTimer);
-  toast.classList.add("hidden");
-
-  await fetch("/client", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-token": ADMIN_TOKEN
-    },
-    body: JSON.stringify(deletedCache)
+  const res = await fetch(`/client/${target.id}/archive`, {
+    method: "PATCH",
+    headers: { "x-admin-token": ADMIN_TOKEN }
   });
+
+  if (!res.ok) {
+    alert("Failed to move member to history.");
+    return;
+  }
+
+  target.card.remove();
 
   loadMembers();
 });
 
-/*********************************
- * INITIAL LOAD
- *********************************/
 showPage(landingPage);
