@@ -142,6 +142,24 @@ async function fetchTeamLeaders() {
   teamLeadersCache = Array.isArray(data.teamLeaders) ? data.teamLeaders : [];
 }
 
+function renderTeamLeaderOptions() {
+  const select = document.getElementById("team_leader");
+  if (!select) return;
+
+  select.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = "Select Team Leader";
+  select.appendChild(placeholder);
+
+  teamLeadersCache.forEach(name => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    select.appendChild(option);
+  });
+}
+
 function renderTeamLeaderFilters() {
   const container = document.getElementById("team-leader-filters");
   if (!container) return;
@@ -557,7 +575,7 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
 
   const firstNameInput = document.getElementById("first_name").value.trim();
   const lastNameInput = document.getElementById("last_name").value.trim();
-  const teamLeaderInput = document.getElementById("team_leader").value.trim().toUpperCase();
+  const teamLeaderInput = document.getElementById("team_leader").value.trim();
 
   if (!firstNameInput || !lastNameInput || !teamLeaderInput) {
     alert("First name, last name, and team leader are required.");
@@ -614,6 +632,7 @@ document.getElementById("admin-login-form")?.addEventListener("submit", async (e
   msg.textContent = "";
 
   await fetchTeamLeaders();
+  renderTeamLeaderOptions();
   renderTeamLeaderFilters();
   showPage(adminPage);
   await loadMembers();
@@ -660,6 +679,7 @@ async function restoreAdminSession() {
   }
 
   await fetchTeamLeaders();
+  renderTeamLeaderOptions();
   renderTeamLeaderFilters();
   showPage(adminPage);
   await loadMembers();
@@ -690,6 +710,9 @@ async function restoreTeamLeaderSession() {
 
 
 showPage(landingPage);
+
+fetchTeamLeaders().then(() => renderTeamLeaderOptions());
+
 restoreAdminSession().then(async (adminRestored) => {
   if (!adminRestored) await restoreTeamLeaderSession();
 });

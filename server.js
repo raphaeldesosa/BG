@@ -62,6 +62,10 @@ function normalizeTeamLeaderName(value) {
   return (value || "").trim().toUpperCase();
 }
 
+const VALID_TEAM_LEADER_NAMES = new Set(
+  TEAM_LEADERS.map(leader => normalizeTeamLeaderName(leader.teamLeaderName))
+);
+
 
 function createAdminSession() {
   const token = crypto.randomUUID();
@@ -152,6 +156,10 @@ app.post("/client", async (req, res) => {
 
   if (!normalizedFirstName || !normalizedLastName || !normalizedEmail || !normalizedContactNumber || !normalizedDsjNumber || !normalizedWalletAddress || !normalizedTeamLeader || !proofImageData || !proofImageType) {
     return res.status(400).json({ error: "All fields required" });
+  }
+
+  if (!VALID_TEAM_LEADER_NAMES.has(normalizedTeamLeader)) {
+    return res.status(400).json({ error: "Please select a valid team leader." });
   }
 
   if (!allowedMimeTypes.includes(proofImageType)) {
