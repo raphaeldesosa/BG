@@ -252,7 +252,7 @@ app.get("/clients", requireAdmin, async (req, res) => {
     const result = await pool.query(
       `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, team_leader, borrow_amount, borrow_date, due_date,
       created_at, is_activated, activated_at,
-      proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof
+      (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof
       FROM clients
       WHERE (is_archived = FALSE OR is_archived IS NULL)
         AND ($1 = '' OR team_leader = $1)

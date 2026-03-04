@@ -346,7 +346,7 @@ async function loadActivatedMembers() {
 
   list.innerHTML = "";
 
-  const res = await fetch("/clients", {
+  const res = await fetch("/clients/activated", {
     headers: { "x-admin-token": ADMIN_TOKEN }
   });
 
@@ -356,8 +356,7 @@ async function loadActivatedMembers() {
     return;
   }
 
-  const members = await res.json();
-  const activatedMembers = members.filter(member => member.is_activated);
+  const activatedMembers = await res.json();
   total.textContent = `Activated Members: ${activatedMembers.length}`;
 
   if (!activatedMembers.length) {
