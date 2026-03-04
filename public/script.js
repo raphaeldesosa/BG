@@ -6,6 +6,7 @@ const memberPage = document.getElementById("member-page");
 const adminLoginPage = document.getElementById("admin-login-page");
 const adminPage = document.getElementById("admin-view");
 const adminHistoryPage = document.getElementById("admin-history-page");
+const adminActivatedPage = document.getElementById("admin-activated-page");
 const maxProofSizeBytes = 2 * 1024 * 1024;
 const allowedImageTypes = ["image/jpeg", "image/png"];
 
@@ -13,7 +14,7 @@ const allowedImageTypes = ["image/jpeg", "image/png"];
  * PAGE SWITCHER (NULL-SAFE)
  *********************************/
 function showPage(page) {
-  [landingPage, memberPage, adminLoginPage, adminPage, adminHistoryPage].forEach(p => {
+  [landingPage, memberPage, adminLoginPage, adminPage, adminHistoryPage, adminActivatedPage].forEach(p => {
     if (p) p.style.display = "none";
   });
 
@@ -77,12 +78,22 @@ document.getElementById("admin-dashboard-back-btn")?.addEventListener("click", (
   showPage(landingPage);
 });
 
+document.getElementById("view-activated-btn")?.addEventListener("click", async () => {
+  showPage(adminActivatedPage);
+  await loadActivatedMembers();
+});
+
 document.getElementById("view-history-btn")?.addEventListener("click", async () => {
   showPage(adminHistoryPage);
   await loadHistory();
 });
 
 document.getElementById("history-back-btn")?.addEventListener("click", async () => {
+  showPage(adminPage);
+  await loadMembers();
+});
+
+document.getElementById("activated-back-btn")?.addEventListener("click", async () => {
   showPage(adminPage);
   await loadMembers();
 });
@@ -275,6 +286,49 @@ async function loadMembers() {
 
       await loadMembers();
     };
+
+    list.appendChild(li);
+  });
+}
+
+async function loadActivatedMembers() {
+  const list = document.getElementById("activated-list");
+  const total = document.getElementById("activated-count");
+
+  if (!list || !total || !ADMIN_TOKEN) return;
+
+  list.innerHTML = "";
+
+  const res = await fetch("/clients", {
+    headers: { "x-admin-token": ADMIN_TOKEN }
+  });
+
+  if (!res.ok) {
+    list.innerHTML = "<li>Failed to load activated members.</li>";
+    total.textContent = "Activated Members: 0";
+    return;
+  }
+
+  const members = await res.json();
+  const activatedMembers = members.filter(member => member.is_activated);
+  total.textContent = `Activated Members: ${activatedMembers.length}`;
+
+  activatedMembers.forEach(member => {
+    const li = document.createElement("li");
+    li.className = "member-card";
+
+    li.innerHTML = `
+      <div class="member-info">
+        <div class="member-name">${member.full_name}</div>
+        <div class="member-meta">DSJ Account No: ${member.dsj_number}</div>
+        <div class="member-meta">Wallet Address: ${member.wallet_address || "-"}</div>
+        <div class="member-meta">Contact: ${member.contact_number}</div>
+        <div class="member-meta">Loaned Amount: ₱${Number(member.borrow_amount || 0).toLocaleString()}</div>
+        ${buildActivationMeta(member)}
+        <div class="member-meta">Due: ${member.due_date ? formatDate(member.due_date) : "-"}</div>
+        ${buildProofImageTag(member)}
+      </div>
+    `;
 
     list.appendChild(li);
   });

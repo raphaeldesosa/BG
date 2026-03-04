@@ -74,7 +74,9 @@ button:hover {
   margin: 0 auto;
 }
 
-#clients-list {
+#clients-list,
+#history-list,
+#activated-list {
   list-style: none;
   padding: 0;
   margin: 0;
