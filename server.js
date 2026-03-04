@@ -139,6 +139,29 @@ app.get("/clients", async (req, res) => {
   }
 });
 
+
+// Get activated clients only (admin only)
+app.get("/clients/activated", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+
+  try {
+    const result = await pool.query(
+      `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, borrow_amount, borrow_date, due_date,
+       is_activated, activated_at,
+       (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof
+       FROM clients
+       WHERE (is_archived = FALSE OR is_archived IS NULL)
+         AND is_activated = TRUE
+       ORDER BY activated_at DESC NULLS LAST, created_at DESC`
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 // Get archived clients (admin only)
 app.get("/clients/history", async (req, res) => {
   const token = req.headers["x-admin-token"];
