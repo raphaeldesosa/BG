@@ -252,14 +252,19 @@ async function loadMembers() {
 
   if (!res.ok) {
     list.innerHTML = "<li>Failed to load members.</li>";
-    total.textContent = "Total Members: 0";
+     total.textContent = "Pending Members: 0";
     return;
   }
 
   const members = await res.json();
-  total.textContent = `Total Members: ${members.length}`;
+  const pendingMembers = members.filter(member => !member.is_activated);
+  total.textContent = `Pending Members: ${pendingMembers.length}`;
+   if (!pendingMembers.length) {
+    list.innerHTML = "<li>No pending members.</li>";
+    return;
+  }
 
-  members.forEach(member => {
+  pendingMembers.forEach(member => {
     const li = document.createElement("li");
     li.className = "member-card";
 
