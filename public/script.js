@@ -120,10 +120,6 @@ document.getElementById("view-activated-btn")?.addEventListener("click", async (
   await loadActivatedMembers();
 });
 
-document.getElementById("view-activated-btn")?.addEventListener("click", async () => {
-  showPage(adminActivatedPage);
-  await loadActivatedMembers();
-});
 
 document.getElementById("view-history-btn")?.addEventListener("click", async () => {
   showPage(adminHistoryPage);
@@ -136,11 +132,6 @@ document.getElementById("activated-back-btn")?.addEventListener("click", async (
 });
 
 document.getElementById("history-back-btn")?.addEventListener("click", async () => {
-  showPage(adminPage);
-  await loadMembers();
-});
-
-document.getElementById("activated-back-btn")?.addEventListener("click", async () => {
   showPage(adminPage);
   await loadMembers();
 });
@@ -373,6 +364,11 @@ async function loadActivatedMembers() {
   const activatedMembers = members.filter(member => member.is_activated);
   total.textContent = `Activated Members: ${activatedMembers.length}`;
 
+  if (!activatedMembers.length) {
+    list.innerHTML = "<li>No activated members.</li>";
+    return;
+  }
+
   activatedMembers.forEach(member => {
     const li = document.createElement("li");
     li.className = "member-card";
@@ -386,9 +382,15 @@ async function loadActivatedMembers() {
         <div class="member-meta">Loaned Amount: ₱${Number(member.borrow_amount || 0).toLocaleString()}</div>
         ${buildActivationMeta(member)}
         <div class="member-meta">Due: ${member.due_date ? formatDate(member.due_date) : "-"}</div>
-        ${buildProofImageTag(member)}
+        ${buildProofSection(member)}
       </div>
     `;
+
+ const proofBtn = li.querySelector(".proof-toggle-btn");
+    const proofContainer = li.querySelector(".proof-container");
+    if (proofBtn && proofContainer) {
+      proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member);
+    }
 
     list.appendChild(li);
   });
