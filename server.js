@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const crypto = require("crypto");
 const { Pool } = require("pg");
 
 const app = express();
@@ -36,10 +37,38 @@ async function initDatabase() {
   }
 }
 
-// ------------------- ADMIN TOKEN -------------------
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || "supersecret123";
+// ------------------- ADMIN AUTH -------------------
 const ADMIN_USERNAME = (process.env.ADMIN_USERNAME || "admin").trim();
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "adminpass0205";
+const ADMIN_SESSION_TTL_MS = Number(process.env.ADMIN_SESSION_TTL_MS || 7 * 24 * 60 * 60 * 1000);
+const adminSessions = new Map();
+
+function createAdminSession() {
+  const token = crypto.randomUUID();
+  adminSessions.set(token, Date.now() + ADMIN_SESSION_TTL_MS);
+  return token;
+}
+
+function isValidAdminToken(token) {
+  if (!token) return false;
+
+  const expiresAt = adminSessions.get(token);
+  if (!expiresAt) return false;
+
+  if (Date.now() > expiresAt) {
+    adminSessions.delete(token);
+    return false;
+  }
+
+  return true;
+}
+
+function requireAdmin(req, res, next) {
+  const token = req.headers["x-admin-token"];
+  if (!isValidAdminToken(token)) return res.status(403).json({ error: "Unauthorized" });
+  next();
+}
+
 
 // ------------------- API ROUTES -------------------
 
@@ -125,17 +154,15 @@ app.post("/admin/login", (req, res) => {
   const password = (req.body?.password || "").trim();
 
   if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-    return res.json({ token: ADMIN_TOKEN });
+    const token = createAdminSession();
+    return res.json({ token });
   }
 
   return res.status(401).json({ error: "Invalid credentials" });
 });
 
 // Get all clients (admin only)
-app.get("/clients", async (req, res) => {
-  const token = req.headers["x-admin-token"];
-  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
-
+app.get("/clients", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
         `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, borrow_amount, borrow_date, due_date,
@@ -154,9 +181,7 @@ app.get("/clients", async (req, res) => {
 
 
 // Get activated clients only (admin only)
-app.get("/clients/activated", async (req, res) => {
-  const token = req.headers["x-admin-token"];
-  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+app.get("/clients/activated", requireAdmin, async (req, res) => {
 
   try {
     const result = await pool.query(
@@ -176,9 +201,7 @@ app.get("/clients/activated", async (req, res) => {
 });
 
 // Get archived clients (admin only)
-app.get("/clients/history", async (req, res) => {
-  const token = req.headers["x-admin-token"];
-  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+app.get("/clients/history", requireAdmin, async (req, res) => {
 
   try {
      const result = await pool.query(
@@ -198,9 +221,7 @@ app.get("/clients/history", async (req, res) => {
 
 
 // Get client proof image (admin only)
-app.get("/client/:id/proof", async (req, res) => {
-  const token = req.headers["x-admin-token"];
-  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+app.get("/client/:id/proof", requireAdmin, async (req, res) => {
 
   try {
     const result = await pool.query(
@@ -227,10 +248,7 @@ app.get("/client/:id/proof", async (req, res) => {
 });
 
 // Move member to history (admin only)
-app.patch("/client/:id/archive", async (req, res) => {
-  const token = req.headers["x-admin-token"];
-  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
-
+app.patch("/client/:id/archive", requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
       "UPDATE clients SET is_archived = TRUE, archived_at = NOW() WHERE id = $1 RETURNING id",
@@ -249,9 +267,7 @@ app.patch("/client/:id/archive", async (req, res) => {
 });
 
 // Permanently delete member from archived history (admin only)
-app.delete("/client/:id", async (req, res) => {
-  const token = req.headers["x-admin-token"];
-  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+app.delete("/client/:id", requireAdmin, async (req, res) => {
 
   try {
     const result = await pool.query(
@@ -271,9 +287,7 @@ app.delete("/client/:id", async (req, res) => {
 });
 
 // Update member loan amount (admin only)
-app.patch("/client/:id/loan", async (req, res) => {
-  const token = req.headers["x-admin-token"];
-  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+app.patch("/client/:id/loan", requireAdmin, async (req, res) => {
 
   const amount = Number(req.body?.borrowAmount);
   if (!Number.isFinite(amount) || amount < 0) {
@@ -298,9 +312,7 @@ app.patch("/client/:id/loan", async (req, res) => {
 });
 
 // Activate member loan (admin only)
-app.patch("/client/:id/activate", async (req, res) => {
-  const token = req.headers["x-admin-token"];
-  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+app.patch("/client/:id/activate", requireAdmin, async (req, res) => {
 
   const borrowDate = new Date();
   const dueDate = new Date(borrowDate);
