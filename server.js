@@ -29,6 +29,8 @@ async function initDatabase() {
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_key ON clients(wallet_address)");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_dsj_number_key ON clients(dsj_number)");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_normalized_key ON clients (LOWER(TRIM(wallet_address)))");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_email_normalized_key ON clients (LOWER(TRIM(email)))");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_contact_number_normalized_key ON clients (TRIM(contact_number))");
   } catch (err) {
     console.error("Database initialization warning:", err.message);
   }
@@ -43,11 +45,16 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "adminpass0205";
 
 // Add member
 app.post("/client", async (req, res) => {
-   const { fullName, email, contactNumber, dsjNumber, walletAddress, proofImageData, proofImageType } = req.body;
+  const { firstName, lastName, email, contactNumber, dsjNumber, walletAddress, proofImageData, proofImageType } = req.body;
+   const normalizedFirstName = (firstName || "").trim().toUpperCase();
+   const normalizedLastName = (lastName || "").trim().toUpperCase();
+   const fullName = `${normalizedFirstName} ${normalizedLastName}`.trim();
+   const normalizedEmail = (email || "").trim().toLowerCase();
+   const normalizedContactNumber = (contactNumber || "").trim();
    const normalizedDsjNumber = (dsjNumber || "").trim();
    const normalizedWalletAddress = (walletAddress || "").trim();
 
-    if (!fullName || !email || !contactNumber || !normalizedDsjNumber || !normalizedWalletAddress || !proofImageData || !proofImageType) {
+    if (!normalizedFirstName || !normalizedLastName || !normalizedEmail || !normalizedContactNumber || !normalizedDsjNumber || !normalizedWalletAddress || !proofImageData || !proofImageType) {
     return res.status(400).json({ error: "All fields required" });
   }
 
@@ -82,8 +89,8 @@ app.post("/client", async (req, res) => {
        RETURNING id, full_name, email, contact_number, dsj_number, wallet_address, borrow_amount, borrow_date, due_date`,
       [
         fullName,
-        email,
-        contactNumber,
+        normalizedEmail,
+        normalizedContactNumber,
         normalizedDsjNumber,
         normalizedWalletAddress,
         proofImageBuffer,
@@ -98,6 +105,12 @@ app.post("/client", async (req, res) => {
     if (err.code === "23505") {
        if ((err.constraint && err.constraint.includes("wallet")) || (err.detail && err.detail.includes("wallet_address"))) {
         return res.status(400).json({ error: "This wallet address is already registered." });
+      }
+       if ((err.constraint && err.constraint.includes("email")) || (err.detail && err.detail.includes("email"))) {
+        return res.status(400).json({ error: "This email address is already registered." });
+      }
+      if ((err.constraint && err.constraint.includes("contact")) || (err.detail && err.detail.includes("contact_number"))) {
+        return res.status(400).json({ error: "This contact number is already registered." });
       }
       return res.status(400).json({ error: "This DSJ account number is already registered." });
     }

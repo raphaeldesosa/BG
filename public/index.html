@@ -34,7 +34,8 @@
   <div id="member-page" class="hidden">
     <h2>Member Registration</h2>
     <form id="member-form">
-      <input id="name" placeholder="Full Name" required><br>
+      <input id="first_name" placeholder="First Name" required style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"><br>
+      <input id="last_name" placeholder="Last Name" required style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"><br>
       <input id="contact" placeholder="Contact Number" required><br>
       <input id="email" placeholder="Email" required><br>
       <input id="dsj_account" placeholder="DSJ Account Number" required><br>

@@ -167,8 +167,20 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
   const base64Proof = btoa(binary);
 
 
+   const firstNameInput = document.getElementById("first_name").value.trim();
+  const lastNameInput = document.getElementById("last_name").value.trim();
+
+  if (!firstNameInput || !lastNameInput) {
+    alert("First name and last name are required.");
+    return;
+  }
+
+  const firstName = firstNameInput.toUpperCase();
+  const lastName = lastNameInput.toUpperCase();
+
   const data = {
-    fullName: document.getElementById("name").value,
+    firstName,
+    lastName,
     contactNumber: document.getElementById("contact").value,
     email: document.getElementById("email").value,
     dsjNumber: document.getElementById("dsj_account").value,
