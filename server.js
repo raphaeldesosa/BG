@@ -126,8 +126,8 @@ app.get("/clients", async (req, res) => {
   try {
     const result = await pool.query(
         `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, borrow_amount, borrow_date, due_date,
-        proof_mime, encode(proof_image, 'base64') AS proof_image_data,
-        is_activated, activated_at
+        is_activated, activated_at,
+        (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof
         FROM clients
         WHERE is_archived = FALSE OR is_archived IS NULL
         ORDER BY created_at DESC`
@@ -147,13 +147,43 @@ app.get("/clients/history", async (req, res) => {
   try {
      const result = await pool.query(
       `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, borrow_amount, borrow_date, due_date,
-       proof_mime, encode(proof_image, 'base64') AS proof_image_data, archived_at,
-       is_activated, activated_at
+       archived_at, is_activated, activated_at,
+       (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof
        FROM clients
        WHERE is_archived = TRUE
        ORDER BY archived_at DESC NULLS LAST, created_at DESC`
     );
     res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+
+// Get client proof image (admin only)
+app.get("/client/:id/proof", async (req, res) => {
+  const token = req.headers["x-admin-token"];
+  if (token !== ADMIN_TOKEN) return res.status(403).json({ error: "Unauthorized" });
+
+  try {
+    const result = await pool.query(
+      `SELECT id, full_name, proof_mime, encode(proof_image, 'base64') AS proof_image_data
+       FROM clients
+       WHERE id = $1`,
+      [req.params.id]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    const client = result.rows[0];
+    if (!client.proof_mime || !client.proof_image_data) {
+      return res.status(404).json({ error: "Proof image not found" });
+    }
+
+    res.json(client);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Database error" });

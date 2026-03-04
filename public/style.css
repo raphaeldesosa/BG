@@ -427,6 +427,14 @@ button:hover {
   border: 1px solid #ddd;
 }
 
+.proof-toggle-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+#view-activated-btn,
 #view-history-btn {
   margin-bottom: 12px;
+  margin-right: 8px;
 }

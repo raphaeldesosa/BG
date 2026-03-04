@@ -44,15 +44,52 @@ function buildActivationMeta(member) {
   `;
 }
 
-function buildProofImageTag(member) {
-  if (!member.proof_image_data || !member.proof_mime) {
+function buildProofSection(member) {
+  if (!member.has_proof) {
     return '<div class="member-meta">Proof: Not uploaded</div>';
   }
 
   return `
-    <div class="member-meta">Proof:</div>
-    <img class="proof-image" src="data:${member.proof_mime};base64,${member.proof_image_data}" alt="Proof uploaded by ${member.full_name}">
+    <div class="member-meta">Proof: <button class="proof-toggle-btn" type="button">View Proof</button></div>
+    <div class="proof-container"></div>
   `;
+}
+
+async function toggleProofImage(button, container, member) {
+  if (!button || !container) return;
+
+  const isVisible = container.dataset.visible === "true";
+  if (isVisible) {
+    container.innerHTML = "";
+    container.dataset.visible = "false";
+    button.textContent = "View Proof";
+    return;
+  }
+
+  if (!container.dataset.loaded) {
+    button.disabled = true;
+    button.textContent = "Loading...";
+
+    const res = await fetch(`/client/${member.id}/proof`, {
+      headers: { "x-admin-token": ADMIN_TOKEN }
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Failed to load proof image." }));
+      alert(err.error || "Failed to load proof image.");
+      button.disabled = false;
+      button.textContent = "View Proof";
+      return;
+    }
+
+    const proof = await res.json();
+    container.innerHTML = `<img class="proof-image" src="data:${proof.proof_mime};base64,${proof.proof_image_data}" alt="Proof uploaded by ${member.full_name}">`;
+    container.dataset.loaded = "true";
+    button.disabled = false;
+  }
+
+  container.dataset.visible = "true";
+  button.textContent = "Hide Proof";
 }
 
 document.getElementById("member-btn")?.addEventListener("click", () => {
@@ -83,9 +120,19 @@ document.getElementById("view-activated-btn")?.addEventListener("click", async (
   await loadActivatedMembers();
 });
 
+document.getElementById("view-activated-btn")?.addEventListener("click", async () => {
+  showPage(adminActivatedPage);
+  await loadActivatedMembers();
+});
+
 document.getElementById("view-history-btn")?.addEventListener("click", async () => {
   showPage(adminHistoryPage);
   await loadHistory();
+});
+
+document.getElementById("activated-back-btn")?.addEventListener("click", async () => {
+  showPage(adminPage);
+  await loadMembers();
 });
 
 document.getElementById("history-back-btn")?.addEventListener("click", async () => {
@@ -233,7 +280,7 @@ async function loadMembers() {
         <div class="member-meta ${dueSoon ? "due-soon" : ""}">
            Due: ${hasDueDate ? formatDate(member.due_date) : "Starts after activation"}
         </div>
-        ${buildProofImageTag(member)}
+         ${buildProofSection(member)}
       </div>
        <div class="member-actions">
        <button class="activate-btn" title="Toggle activation" ${member.is_activated ? "disabled" : ""}>${getActivationLabel(member)}</button>
@@ -243,6 +290,14 @@ async function loadMembers() {
     `;
 
     li.querySelector(".delete-btn").onclick = () => requestArchive(member.id, li);
+
+    
+    const proofBtn = li.querySelector(".proof-toggle-btn");
+    const proofContainer = li.querySelector(".proof-container");
+    if (proofBtn && proofContainer) {
+      proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member);
+    }
+
     li.querySelector(".activate-btn").onclick = async () => {
       const activateRes = await fetch(`/client/${member.id}/activate`, {
         method: "PATCH",
@@ -365,12 +420,18 @@ async function loadHistory() {
         <div class="member-meta">DSJ: ${member.dsj_number}</div>
         <div class="member-meta">Wallet: ${member.wallet_address || "-"}</div>
         <div class="member-meta">Archived: ${formatDate(member.archived_at)}</div>
-        ${buildProofImageTag(member)}
+        ${buildProofSection(member)}
       </div>
        <div class="member-actions">
         <button class="danger-btn delete-history-btn" title="Delete permanently">Delete</button>
       </div>
     `;
+    
+    const proofBtn = li.querySelector(".proof-toggle-btn");
+    const proofContainer = li.querySelector(".proof-container");
+    if (proofBtn && proofContainer) {
+      proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member);
+    }
     
     li.querySelector(".delete-history-btn").onclick = async () => {
       const shouldDelete = confirm(`Delete ${member.full_name} permanently from archived history?`);
