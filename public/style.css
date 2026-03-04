@@ -438,3 +438,23 @@ button:hover {
   margin-bottom: 12px;
   margin-right: 8px;
 }
+
+#team-leader-filters {
+  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-btn {
+  width: auto;
+}
+
+.active-filter {
+  background: #0d6efd;
+  color: #fff;
+}
+
+#team-leader-btn {
+  margin-top: 8px;
+}

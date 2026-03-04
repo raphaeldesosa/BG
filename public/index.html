@@ -6,7 +6,7 @@
   <title>DSJ Members</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    /* Quick inline CSS to ensure hidden elements work */
+ 
     .hidden { display: none; }
     #delete-modal {
       position: fixed;
@@ -28,6 +28,7 @@
     <h1>Welcome to DSJ Members System</h1>
     <button id="member-btn">Register as Member</button>
     <button id="admin-btn">Admin Login</button>
+    <button id="team-leader-btn">Team Leader Login</button>
   </div>
 
 
@@ -40,6 +41,7 @@
       <input id="email" placeholder="Email" required><br>
       <input id="dsj_account" placeholder="DSJ Account Number" required><br>
       <input id="wallet_address" placeholder="Wallet Address" required><br>
+      <input id="team_leader" placeholder="Team Leader" required style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"><br>
       <input id="proof_image" type="file" accept="image/jpeg,image/png" required><br>
       <small>Upload JPEG/PNG proof image (max 2MB).</small><br>
       <button type="submit">Register</button>
@@ -59,14 +61,33 @@
     <div id="admin-msg" style="color:red;margin-top:5px;"></div>
   </div>
 
+  <div id="team-leader-login-page" class="hidden">
+    <h2>Team Leader Login</h2>
+    <form id="team-leader-login-form">
+      <input id="team-leader-username" placeholder="Username" required><br>
+      <input id="team-leader-password" type="password" placeholder="Password" required><br>
+      <button type="submit">Login</button>
+      <button type="button" id="team-leader-back-btn">Back</button>
+    </form>
+    <div id="team-leader-msg" style="color:red;margin-top:5px;"></div>
+  </div>
+
  
   <div id="admin-view" class="hidden members-container">
     <h2>Admin Dashboard</h2>
     <p id="total-count">Pending Members: 0</p>
+    <div id="team-leader-filters"></div>
     <button id="view-activated-btn" class="secondary-btn">View Activated Users</button>
     <button id="view-history-btn" class="secondary-btn">View Archived History</button>
     <ul id="clients-list"></ul>
     <button id="admin-dashboard-back-btn">Back</button>
+  </div>
+
+   <div id="team-leader-view" class="hidden members-container">
+    <h2 id="team-leader-dashboard-title">Team Leader Dashboard</h2>
+    <p id="team-leader-count">Members: 0</p>
+    <ul id="team-leader-list"></ul>
+    <button id="team-leader-dashboard-back-btn">Back</button>
   </div>
   
   <div id="admin-activated-page" class="hidden members-container">

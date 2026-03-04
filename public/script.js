@@ -4,18 +4,29 @@
 const landingPage = document.getElementById("landing-page");
 const memberPage = document.getElementById("member-page");
 const adminLoginPage = document.getElementById("admin-login-page");
+const teamLeaderLoginPage = document.getElementById("team-leader-login-page");
 const adminPage = document.getElementById("admin-view");
+const teamLeaderPage = document.getElementById("team-leader-view");
 const adminHistoryPage = document.getElementById("admin-history-page");
 const adminActivatedPage = document.getElementById("admin-activated-page");
+
 const maxProofSizeBytes = 2 * 1024 * 1024;
 const allowedImageTypes = ["image/jpeg", "image/png"];
 const ADMIN_TOKEN_STORAGE_KEY = "admin_token";
+const TEAM_LEADER_TOKEN_STORAGE_KEY = "team_leader_token";
+const TEAM_LEADER_NAME_STORAGE_KEY = "team_leader_name";
+
+let ADMIN_TOKEN = null;
+let TEAM_LEADER_TOKEN = null;
+let TEAM_LEADER_NAME = null;
+let selectedAdminFilter = "";
+let teamLeadersCache = [];
 
 /*********************************
  * PAGE SWITCHER (NULL-SAFE)
  *********************************/
 function showPage(page) {
-  [landingPage, memberPage, adminLoginPage, adminPage, adminHistoryPage, adminActivatedPage].forEach(p => {
+   [landingPage, memberPage, adminLoginPage, teamLeaderLoginPage, adminPage, teamLeaderPage, adminHistoryPage, adminActivatedPage].forEach(p => {
     if (p) p.style.display = "none";
   });
 
@@ -27,7 +38,7 @@ function formatDate(value) {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleDateString();
+  return date.toLocaleString();
 }
 
 function getActivationLabel(member) {
@@ -35,9 +46,8 @@ function getActivationLabel(member) {
 }
 
 function buildActivationMeta(member) {
-  if (!member.is_activated) {
-    return '<div class="member-meta">Status: Pending activation</div>';
-  }
+  
+  if (!member.is_activated) return '<div class="member-meta">Status: Pending activation</div>';
 
   return `
     <div class="member-meta">Status: Activated</div>
@@ -46,9 +56,7 @@ function buildActivationMeta(member) {
 }
 
 function buildProofSection(member) {
-  if (!member.has_proof) {
-    return '<div class="member-meta">Proof: Not uploaded</div>';
-  }
+  if (!member.has_proof) return '<div class="member-meta">Proof: Not uploaded</div>';
 
   return `
     <div class="member-meta">Proof: <button class="proof-toggle-btn" type="button">View Proof</button></div>
@@ -56,7 +64,7 @@ function buildProofSection(member) {
   `;
 }
 
-async function toggleProofImage(button, container, member) {
+async function toggleProofImage(button, container, member, mode = "admin") {
   if (!button || !container) return;
 
   const isVisible = container.dataset.visible === "true";
@@ -71,9 +79,14 @@ async function toggleProofImage(button, container, member) {
     button.disabled = true;
     button.textContent = "Loading...";
 
-    const res = await fetch(`/client/${member.id}/proof`, {
-      headers: { "x-admin-token": ADMIN_TOKEN }
-    });
+     const headers = {};
+    if (mode === "teamLeader") {
+      headers["x-team-leader-token"] = TEAM_LEADER_TOKEN;
+    } else {
+      headers["x-admin-token"] = ADMIN_TOKEN;
+    }
+
+    const res = await fetch(`/client/${member.id}/proof`, { headers });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: "Failed to load proof image." }));
@@ -93,120 +106,6 @@ async function toggleProofImage(button, container, member) {
   button.textContent = "Hide Proof";
 }
 
-document.getElementById("member-btn")?.addEventListener("click", () => {
-  showPage(memberPage);
-});
-
-document.getElementById("admin-btn")?.addEventListener("click", () => {
-  showPage(adminLoginPage);
-});
-
-
-document.getElementById("member-back-btn")?.addEventListener("click", () => {
-  showPage(landingPage);
-});
-
-
-document.getElementById("admin-back-btn")?.addEventListener("click", () => {
-  showPage(landingPage);
-});
-
-
-document.getElementById("admin-dashboard-back-btn")?.addEventListener("click", () => {
-  showPage(landingPage);
-});
-
-document.getElementById("view-activated-btn")?.addEventListener("click", async () => {
-  showPage(adminActivatedPage);
-  await loadActivatedMembers();
-});
-
-
-document.getElementById("view-history-btn")?.addEventListener("click", async () => {
-  showPage(adminHistoryPage);
-  await loadHistory();
-});
-
-document.getElementById("activated-back-btn")?.addEventListener("click", async () => {
-  showPage(adminPage);
-  await loadMembers();
-});
-
-document.getElementById("history-back-btn")?.addEventListener("click", async () => {
-  showPage(adminPage);
-  await loadMembers();
-});
-
-document.getElementById("member-form")?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-    const proofImage = document.getElementById("proof_image").files[0];
-
-  if (!proofImage) {
-    alert("Please upload a proof image.");
-    return;
-  }
-
-  if (!allowedImageTypes.includes(proofImage.type)) {
-    alert("Only JPEG and PNG files are allowed.");
-    return;
-  }
-
-  if (proofImage.size > maxProofSizeBytes) {
-    alert("Proof image must be 2MB or smaller.");
-    return;
-  }
-
-  const proofImageData = await proofImage.arrayBuffer();
-  const bytes = new Uint8Array(proofImageData);
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  const base64Proof = btoa(binary);
-
-
-   const firstNameInput = document.getElementById("first_name").value.trim();
-  const lastNameInput = document.getElementById("last_name").value.trim();
-
-  if (!firstNameInput || !lastNameInput) {
-    alert("First name and last name are required.");
-    return;
-  }
-
-  const firstName = firstNameInput.toUpperCase();
-  const lastName = lastNameInput.toUpperCase();
-
-  const data = {
-    firstName,
-    lastName,
-    contactNumber: document.getElementById("contact").value,
-    email: document.getElementById("email").value,
-    dsjNumber: document.getElementById("dsj_account").value,
-    walletAddress: document.getElementById("wallet_address").value,
-    proofImageData: base64Proof,
-    proofImageType: proofImage.type
-  };
-
-  const res = await fetch("/client", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
-
-  if (res.ok) {
-    alert("Registration successful! Loan is pending activation by admin.");
-    e.target.reset();
-    showPage(landingPage);
-  } else {
-    const err = await res.json();
-    alert(err.error || "Registration failed");
-  }
-});
-
-
-let ADMIN_TOKEN = null;
 
 function saveAdminToken(token) {
   ADMIN_TOKEN = token;
@@ -219,55 +118,57 @@ function saveAdminToken(token) {
   localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
 }
 
-async function restoreAdminSession() {
-  const storedToken = localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
-  if (!storedToken) return;
+function saveTeamLeaderSession(token, name) {
+  TEAM_LEADER_TOKEN = token;
+  TEAM_LEADER_NAME = name;
 
-  ADMIN_TOKEN = storedToken;
-
-  const res = await fetch("/clients", {
-    headers: { "x-admin-token": ADMIN_TOKEN }
-  });
-
-  if (!res.ok) {
-    saveAdminToken(null);
+  if (token) {
+    localStorage.setItem(TEAM_LEADER_TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(TEAM_LEADER_NAME_STORAGE_KEY, name || "");
     return;
   }
 
-  showPage(adminPage);
-  await loadMembers();
+  localStorage.removeItem(TEAM_LEADER_TOKEN_STORAGE_KEY);
+  localStorage.removeItem(TEAM_LEADER_NAME_STORAGE_KEY);
 }
 
-document.getElementById("admin-login-form")?.addEventListener("submit", async (e) => {
-  e.preventDefault();
+async function fetchTeamLeaders() {
+  const res = await fetch("/team-leaders");
+  if (!res.ok) {
+    teamLeadersCache = [];
+    return;
+  }
+   const data = await res.json();
+  teamLeadersCache = Array.isArray(data.teamLeaders) ? data.teamLeaders : [];
+}
 
-  const username = document.getElementById("admin-username").value.trim();
-  const password = document.getElementById("admin-password").value.trim();
-  const msg = document.getElementById("admin-msg");
+function renderTeamLeaderFilters() {
+  const container = document.getElementById("team-leader-filters");
+  if (!container) return;
 
-  const res = await fetch("/admin/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
+  container.innerHTML = "";
+  const allBtn = document.createElement("button");
+  allBtn.className = `secondary-btn filter-btn ${selectedAdminFilter === "" ? "active-filter" : ""}`;
+  allBtn.textContent = "All Team Leaders";
+  allBtn.onclick = async () => {
+    selectedAdminFilter = "";
+    renderTeamLeaderFilters();
+    await loadMembers();
+  };
+  container.appendChild(allBtn);
+
+  teamLeadersCache.forEach(name => {
+    const btn = document.createElement("button");
+    btn.className = `secondary-btn filter-btn ${selectedAdminFilter === name ? "active-filter" : ""}`;
+    btn.textContent = name;
+    btn.onclick = async () => {
+      selectedAdminFilter = name;
+      renderTeamLeaderFilters();
+      await loadMembers();
+    };
+    container.appendChild(btn);
   });
-
-  if (res.ok) {
-    const data = await res.json();
-    saveAdminToken(data.token);
-    msg.textContent = "";
-    showPage(adminPage);
-    loadMembers();
-    return;
-  }
-
-  if (res.status === 401) {
-    msg.textContent = "Invalid admin credentials";
-    return;
-  }
-
-  const err = await res.json().catch(() => ({ error: "Unable to login right now." }));
-  msg.textContent = err.error || "Unable to login right now.";
-});
+}
 
 /*********************************
  * LOAD MEMBERS (ADMIN)
@@ -279,21 +180,23 @@ async function loadMembers() {
   if (!list || !total || !ADMIN_TOKEN) return;
 
   list.innerHTML = "";
+  const query = selectedAdminFilter ? `?teamLeader=${encodeURIComponent(selectedAdminFilter)}` : "";
 
-  const res = await fetch("/clients", {
+  const res = await fetch(`/clients${query}`, {
     headers: { "x-admin-token": ADMIN_TOKEN }
   });
 
   if (!res.ok) {
     list.innerHTML = "<li>Failed to load members.</li>";
-     total.textContent = "Pending Members: 0";
+    total.textContent = "Pending Members: 0";
     return;
   }
 
   const members = await res.json();
   const pendingMembers = members.filter(member => !member.is_activated);
   total.textContent = `Pending Members: ${pendingMembers.length}`;
-   if (!pendingMembers.length) {
+   
+  if (!pendingMembers.length) {
     list.innerHTML = "<li>No pending members.</li>";
     return;
   }
@@ -302,28 +205,24 @@ async function loadMembers() {
     const li = document.createElement("li");
     li.className = "member-card";
 
-    const hasDueDate = Boolean(member.due_date);
-    const dueDate = hasDueDate ? new Date(member.due_date) : null;
-    const today = new Date();
-    const diffDays = dueDate ? Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24)) : null;
-    const dueSoon = dueDate ? diffDays <= 7 : false;
 
     li.innerHTML = `
       <div class="member-info">
         <div class="member-name">${member.full_name}</div>
+        <div class="member-meta">Team Leader: ${member.team_leader || "-"}</div>
+        <div class="member-meta">Registered: ${formatDate(member.created_at)}</div>
         <div class="member-meta">DSJ Account No: ${member.dsj_number}</div>
         <div class="member-meta">Wallet Address: ${member.wallet_address || "-"}</div>
         <div class="member-meta">Contact: ${member.contact_number}</div>
         <div class="member-meta">Loaned Amount: ₱${Number(member.borrow_amount || 0).toLocaleString()}</div>
+        ${buildActivationMeta(member)}
          ${buildActivationMeta(member)}
-        <div class="member-meta ${dueSoon ? "due-soon" : ""}">
-           Due: ${hasDueDate ? formatDate(member.due_date) : "Starts after activation"}
-        </div>
-         ${buildProofSection(member)}
+        <div class="member-meta">Due: ${member.due_date ? formatDate(member.due_date) : "Starts after activation"}</div>
+        ${buildProofSection(member)}
       </div>
-       <div class="member-actions">
-       <button class="activate-btn" title="Toggle activation" ${member.is_activated ? "disabled" : ""}>${getActivationLabel(member)}</button>
-        <button class="edit-loan-btn" title="Edit loan amount">Edit Loan</button>
+        <div class="member-actions">
+        <button class="activate-btn" ${member.is_activated ? "disabled" : ""}>${getActivationLabel(member)}</button>
+        <button class="edit-loan-btn">Edit Loan</button>
         <button class="delete-btn" title="Move to history">Archive</button>
       </div>
     `;
@@ -334,7 +233,7 @@ async function loadMembers() {
     const proofBtn = li.querySelector(".proof-toggle-btn");
     const proofContainer = li.querySelector(".proof-container");
     if (proofBtn && proofContainer) {
-      proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member);
+      proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member, "admin");
     }
 
     li.querySelector(".activate-btn").onclick = async () => {
@@ -344,8 +243,7 @@ async function loadMembers() {
       });
 
       if (!activateRes.ok) {
-        const err = await activateRes.json().catch(() => ({ error: "Failed to activate member." }));
-        alert(err.error || "Failed to activate member.");
+        alert("Failed to activate member.");
         return;
       }
 
@@ -373,8 +271,7 @@ async function loadMembers() {
       });
 
       if (!updateRes.ok) {
-        const err = await updateRes.json().catch(() => ({ error: "Failed to update loan amount." }));
-        alert(err.error || "Failed to update loan amount.");
+        alert("Failed to update loan amount.");
         return;
       }
 
@@ -384,6 +281,62 @@ async function loadMembers() {
     list.appendChild(li);
   });
 }
+
+async function loadTeamLeaderMembers() {
+  const list = document.getElementById("team-leader-list");
+  const total = document.getElementById("team-leader-count");
+  const title = document.getElementById("team-leader-dashboard-title");
+
+  if (!list || !total || !title || !TEAM_LEADER_TOKEN) return;
+
+  list.innerHTML = "";
+  const res = await fetch("/team-leader/clients", {
+    headers: { "x-team-leader-token": TEAM_LEADER_TOKEN }
+  });
+
+  if (!res.ok) {
+    list.innerHTML = "<li>Failed to load members.</li>";
+    total.textContent = "Members: 0";
+    return;
+  }
+
+  const data = await res.json();
+  const members = data.clients || [];
+  TEAM_LEADER_NAME = data.teamLeaderName || TEAM_LEADER_NAME;
+  title.textContent = `${TEAM_LEADER_NAME} Dashboard`;
+  total.textContent = `Members: ${members.length}`;
+
+  if (!members.length) {
+    list.innerHTML = "<li>No registered members yet.</li>";
+    return;
+  }
+
+  members.forEach(member => {
+    const li = document.createElement("li");
+    li.className = "member-card";
+    li.innerHTML = `
+      <div class="member-info">
+        <div class="member-name">${member.full_name}</div>
+        <div class="member-meta">Registered: ${formatDate(member.created_at)}</div>
+        <div class="member-meta">DSJ Account No: ${member.dsj_number}</div>
+        <div class="member-meta">Wallet Address: ${member.wallet_address || "-"}</div>
+        <div class="member-meta">Contact: ${member.contact_number}</div>
+        <div class="member-meta">Email: ${member.email || "-"}</div>
+        ${buildActivationMeta(member)}
+        ${buildProofSection(member)}
+      </div>
+    `;
+
+    const proofBtn = li.querySelector(".proof-toggle-btn");
+    const proofContainer = li.querySelector(".proof-container");
+    if (proofBtn && proofContainer) {
+      proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member, "teamLeader");
+    }
+
+    list.appendChild(li);
+  });
+}
+
 
 async function loadActivatedMembers() {
   const list = document.getElementById("activated-list");
@@ -419,6 +372,8 @@ async function loadActivatedMembers() {
     li.innerHTML = `
       <div class="member-info">
         <div class="member-name">${member.full_name}</div>
+        <div class="member-meta">Team Leader: ${member.team_leader || "-"}</div>
+        <div class="member-meta">Registered: ${formatDate(member.created_at)}</div>
         <div class="member-meta">DSJ Account No: ${member.dsj_number}</div>
         <div class="member-meta">Wallet Address: ${member.wallet_address || "-"}</div>
         <div class="member-meta">Contact: ${member.contact_number}</div>
@@ -429,10 +384,10 @@ async function loadActivatedMembers() {
       </div>
     `;
 
- const proofBtn = li.querySelector(".proof-toggle-btn");
+    const proofBtn = li.querySelector(".proof-toggle-btn");
     const proofContainer = li.querySelector(".proof-container");
     if (proofBtn && proofContainer) {
-      proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member);
+      proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member, "admin");
     }
 
     list.appendChild(li);
@@ -467,12 +422,12 @@ async function loadHistory() {
     li.innerHTML = `
       <div class="member-info">
         <div class="member-name">${member.full_name}</div>
-        <div class="member-meta">DSJ: ${member.dsj_number}</div>
-        <div class="member-meta">Wallet: ${member.wallet_address || "-"}</div>
+        <div class="member-meta">Team Leader: ${member.team_leader || "-"}</div>
+        <div class="member-meta">Registered: ${formatDate(member.created_at)}</div>
         <div class="member-meta">Archived: ${formatDate(member.archived_at)}</div>
         ${buildProofSection(member)}
       </div>
-       <div class="member-actions">
+      <div class="member-actions">
         <button class="danger-btn delete-history-btn" title="Delete permanently">Delete</button>
       </div>
     `;
@@ -480,7 +435,7 @@ async function loadHistory() {
     const proofBtn = li.querySelector(".proof-toggle-btn");
     const proofContainer = li.querySelector(".proof-container");
     if (proofBtn && proofContainer) {
-      proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member);
+       proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member, "admin");
     }
     
     li.querySelector(".delete-history-btn").onclick = async () => {
@@ -493,13 +448,10 @@ async function loadHistory() {
       });
 
       if (!deleteRes.ok) {
-        const err = await deleteRes.json().catch(() => ({ error: "Failed to delete archived member." }));
-        alert(err.error || "Failed to delete archived member.");
+        alert("Failed to delete archived member.");
         return;
       }
 
-      li.remove();
-      total.textContent = `Archived Members: ${Math.max(0, members.length - 1)}`;
       await loadHistory();
     };
 
@@ -549,5 +501,196 @@ confirmBtn?.addEventListener("click", async () => {
   loadMembers();
 });
 
+document.getElementById("member-btn")?.addEventListener("click", () => showPage(memberPage));
+document.getElementById("admin-btn")?.addEventListener("click", () => showPage(adminLoginPage));
+document.getElementById("team-leader-btn")?.addEventListener("click", () => showPage(teamLeaderLoginPage));
+document.getElementById("member-back-btn")?.addEventListener("click", () => showPage(landingPage));
+document.getElementById("admin-back-btn")?.addEventListener("click", () => showPage(landingPage));
+document.getElementById("team-leader-back-btn")?.addEventListener("click", () => showPage(landingPage));
+
+document.getElementById("admin-dashboard-back-btn")?.addEventListener("click", () => {
+  saveAdminToken(null);
+  selectedAdminFilter = "";
+  showPage(landingPage);
+});
+
+document.getElementById("team-leader-dashboard-back-btn")?.addEventListener("click", () => {
+  saveTeamLeaderSession(null, null);
+  showPage(landingPage);
+});
+
+document.getElementById("view-activated-btn")?.addEventListener("click", async () => {
+  showPage(adminActivatedPage);
+  await loadActivatedMembers();
+});
+
+document.getElementById("view-history-btn")?.addEventListener("click", async () => {
+  showPage(adminHistoryPage);
+  await loadHistory();
+});
+
+document.getElementById("activated-back-btn")?.addEventListener("click", async () => {
+  showPage(adminPage);
+  await loadMembers();
+});
+
+document.getElementById("history-back-btn")?.addEventListener("click", async () => {
+  showPage(adminPage);
+  await loadMembers();
+});
+
+document.getElementById("member-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const proofImage = document.getElementById("proof_image").files[0];
+  if (!proofImage) return alert("Please upload a proof image.");
+  if (!allowedImageTypes.includes(proofImage.type)) return alert("Only JPEG and PNG files are allowed.");
+  if (proofImage.size > maxProofSizeBytes) return alert("Proof image must be 2MB or smaller.");
+
+  const proofImageData = await proofImage.arrayBuffer();
+  const bytes = new Uint8Array(proofImageData);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  const base64Proof = btoa(binary);
+
+  const firstNameInput = document.getElementById("first_name").value.trim();
+  const lastNameInput = document.getElementById("last_name").value.trim();
+  const teamLeaderInput = document.getElementById("team_leader").value.trim().toUpperCase();
+
+  if (!firstNameInput || !lastNameInput || !teamLeaderInput) {
+    alert("First name, last name, and team leader are required.");
+    return;
+  }
+
+  const res = await fetch("/client", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      firstName: firstNameInput.toUpperCase(),
+      lastName: lastNameInput.toUpperCase(),
+      contactNumber: document.getElementById("contact").value,
+      email: document.getElementById("email").value,
+      dsjNumber: document.getElementById("dsj_account").value,
+      walletAddress: document.getElementById("wallet_address").value,
+      teamLeader: teamLeaderInput,
+      proofImageData: base64Proof,
+      proofImageType: proofImage.type
+    })
+  });
+
+  if (res.ok) {
+    alert("Registration successful! Loan is pending activation by admin.");
+    e.target.reset();
+    showPage(landingPage);
+    return;
+  }
+
+  const err = await res.json().catch(() => ({ error: "Registration failed" }));
+  alert(err.error || "Registration failed");
+});
+
+document.getElementById("admin-login-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById("admin-username").value.trim();
+  const password = document.getElementById("admin-password").value.trim();
+  const msg = document.getElementById("admin-msg");
+
+  const res = await fetch("/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (!res.ok) {
+    msg.textContent = "Invalid admin credentials";
+    return;
+  }
+
+  const data = await res.json();
+  saveAdminToken(data.token);
+  msg.textContent = "";
+
+  await fetchTeamLeaders();
+  renderTeamLeaderFilters();
+  showPage(adminPage);
+  await loadMembers();
+});
+
+document.getElementById("team-leader-login-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const username = document.getElementById("team-leader-username").value.trim();
+  const password = document.getElementById("team-leader-password").value.trim();
+  const msg = document.getElementById("team-leader-msg");
+
+  const res = await fetch("/team-leader/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password })
+  });
+
+  if (!res.ok) {
+    msg.textContent = "Invalid team leader credentials";
+    return;
+  }
+
+  const data = await res.json();
+  saveTeamLeaderSession(data.token, data.teamLeaderName);
+  msg.textContent = "";
+
+  showPage(teamLeaderPage);
+  await loadTeamLeaderMembers();
+});
+
+async function restoreAdminSession() {
+  const storedToken = localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
+  if (!storedToken) return false;
+
+  ADMIN_TOKEN = storedToken;
+  const res = await fetch("/clients", {
+    headers: { "x-admin-token": ADMIN_TOKEN }
+  });
+
+  if (!res.ok) {
+    saveAdminToken(null);
+    return false;
+  }
+
+  await fetchTeamLeaders();
+  renderTeamLeaderFilters();
+  showPage(adminPage);
+  await loadMembers();
+  return true;
+}
+
+async function restoreTeamLeaderSession() {
+  const storedToken = localStorage.getItem(TEAM_LEADER_TOKEN_STORAGE_KEY);
+  const storedName = localStorage.getItem(TEAM_LEADER_NAME_STORAGE_KEY);
+  if (!storedToken) return false;
+
+  TEAM_LEADER_TOKEN = storedToken;
+  TEAM_LEADER_NAME = storedName;
+
+  const res = await fetch("/team-leader/clients", {
+    headers: { "x-team-leader-token": TEAM_LEADER_TOKEN }
+  });
+
+  if (!res.ok) {
+    saveTeamLeaderSession(null, null);
+    return false;
+  }
+
+  showPage(teamLeaderPage);
+  await loadTeamLeaderMembers();
+  return true;
+}
+
+
 showPage(landingPage);
-restoreAdminSession();
+restoreAdminSession().then(async (adminRestored) => {
+  if (!adminRestored) await restoreTeamLeaderSession();
+});
