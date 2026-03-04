@@ -47,13 +47,14 @@ const adminSessions = new Map();
 // ------------------- TEAM LEADER AUTH -------------------
 // Replace these credentials with your own values.
 const TEAM_LEADERS = [
-  { username: "leader1", password: "password1", teamLeaderName: "TEAM LEADER 1" },
-  { username: "leader2", password: "password2", teamLeaderName: "TEAM LEADER 2" },
-  { username: "leader3", password: "password3", teamLeaderName: "TEAM LEADER 3" },
-  { username: "leader4", password: "password4", teamLeaderName: "TEAM LEADER 4" },
-  { username: "leader5", password: "password5", teamLeaderName: "TEAM LEADER 5" },
-  { username: "leader6", password: "password6", teamLeaderName: "TEAM LEADER 6" },
-  { username: "leader7", password: "password7", teamLeaderName: "TEAM LEADER 7" }
+  { username: "leader1", password: "password1", teamLeaderName: "Jerwin Evangelista" },
+  { username: "leader2", password: "password2", teamLeaderName: "Jose Lim" },
+  { username: "leader3", password: "password3", teamLeaderName: "Jundan Favores" },
+  { username: "leader4", password: "password4", teamLeaderName: "Liza Ilagan" },
+  { username: "leader5", password: "password5", teamLeaderName: "Kyla Ilagan" },
+  { username: "leader6", password: "password6", teamLeaderName: "Elanor Macaballug" },
+  { username: "leader7", password: "password7", teamLeaderName: "Miguel Valdez" },
+  { username: "leader8", password: "password8", teamLeaderName: "Gloria Reyes" }
 ];
 const TEAM_LEADER_SESSION_TTL_MS = Number(process.env.TEAM_LEADER_SESSION_TTL_MS || 7 * 24 * 60 * 60 * 1000);
 const teamLeaderSessions = new Map();
