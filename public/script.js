@@ -9,6 +9,7 @@ const adminHistoryPage = document.getElementById("admin-history-page");
 const adminActivatedPage = document.getElementById("admin-activated-page");
 const maxProofSizeBytes = 2 * 1024 * 1024;
 const allowedImageTypes = ["image/jpeg", "image/png"];
+const ADMIN_TOKEN_STORAGE_KEY = "admin_token";
 
 /*********************************
  * PAGE SWITCHER (NULL-SAFE)
@@ -195,6 +196,36 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
 
 let ADMIN_TOKEN = null;
 
+function saveAdminToken(token) {
+  ADMIN_TOKEN = token;
+
+  if (token) {
+    localStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, token);
+    return;
+  }
+
+  localStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+}
+
+async function restoreAdminSession() {
+  const storedToken = localStorage.getItem(ADMIN_TOKEN_STORAGE_KEY);
+  if (!storedToken) return;
+
+  ADMIN_TOKEN = storedToken;
+
+  const res = await fetch("/clients", {
+    headers: { "x-admin-token": ADMIN_TOKEN }
+  });
+
+  if (!res.ok) {
+    saveAdminToken(null);
+    return;
+  }
+
+  showPage(adminPage);
+  await loadMembers();
+}
+
 document.getElementById("admin-login-form")?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -210,7 +241,7 @@ document.getElementById("admin-login-form")?.addEventListener("submit", async (e
 
   if (res.ok) {
     const data = await res.json();
-    ADMIN_TOKEN = data.token;
+    saveAdminToken(data.token);
     msg.textContent = "";
     showPage(adminPage);
     loadMembers();
@@ -507,3 +538,4 @@ confirmBtn?.addEventListener("click", async () => {
 });
 
 showPage(landingPage);
+restoreAdminSession();
