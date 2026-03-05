@@ -304,6 +304,7 @@ app.get("/team-leader/clients", requireTeamLeader, async (req, res) => {
 
 // Get activated clients only (admin only)
 app.get("/clients/activated", requireAdmin, async (req, res) => {
+  const teamLeaderFilter = normalizeTeamLeaderName(req.query.teamLeader);
 
   try {
     const result = await pool.query(
@@ -314,7 +315,10 @@ app.get("/clients/activated", requireAdmin, async (req, res) => {
        FROM clients
        WHERE (is_archived = FALSE OR is_archived IS NULL)
          AND is_activated = TRUE
+         AND ($1 = '' OR team_leader = $1)
        ORDER BY team_leader ASC, activated_at DESC NULLS LAST, created_at DESC`
+       ,
+      [teamLeaderFilter]
     );
     res.json(result.rows);
   } catch (err) {
