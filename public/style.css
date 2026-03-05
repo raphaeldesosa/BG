@@ -447,7 +447,8 @@ button:hover {
   margin-right: 8px;
 }
 
-#team-leader-filters {
+#team-leader-filters,
+#activated-team-leader-filters {
   margin-bottom: 12px;
   display: flex;
   flex-wrap: wrap;
@@ -465,4 +466,21 @@ button:hover {
 
 #team-leader-btn {
   margin-top: 8px;
+}
+
+.team-leader-member-filter-btn {
+  background: #6c757d;
+  color: #fff;
+  font-size: 12px;
+  padding: 4px 10px;
+  margin-left: 6px;
+}
+
+.team-leader-member-filter-btn:hover {
+  background: #5a6268;
+}
+
+.team-leader-member-filter-btn:disabled {
+  background: #adb5bd;
+  cursor: not-allowed;
 }

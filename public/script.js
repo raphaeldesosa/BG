@@ -20,6 +20,7 @@ let ADMIN_TOKEN = null;
 let TEAM_LEADER_TOKEN = null;
 let TEAM_LEADER_NAME = null;
 let selectedAdminFilter = "";
+let selectedActivatedFilter = "";
 let teamLeadersCache = [];
 
 /*********************************
@@ -217,6 +218,34 @@ function renderTeamLeaderFilters() {
   });
 }
 
+function renderActivatedTeamLeaderFilters() {
+  const container = document.getElementById("activated-team-leader-filters");
+  if (!container) return;
+
+  container.innerHTML = "";
+  const allBtn = document.createElement("button");
+  allBtn.className = `secondary-btn filter-btn ${selectedActivatedFilter === "" ? "active-filter" : ""}`;
+  allBtn.textContent = "All Team Leaders";
+  allBtn.onclick = async () => {
+    selectedActivatedFilter = "";
+    renderActivatedTeamLeaderFilters();
+    await loadActivatedMembers();
+  };
+  container.appendChild(allBtn);
+
+  teamLeadersCache.forEach(name => {
+    const btn = document.createElement("button");
+    btn.className = `secondary-btn filter-btn ${selectedActivatedFilter === name ? "active-filter" : ""}`;
+    btn.textContent = name;
+    btn.onclick = async () => {
+      selectedActivatedFilter = name;
+      renderActivatedTeamLeaderFilters();
+      await loadActivatedMembers();
+    };
+    container.appendChild(btn);
+  });
+}
+
 /*********************************
  * LOAD MEMBERS (ADMIN)
  *********************************/
@@ -276,6 +305,7 @@ async function loadMembers() {
     li.querySelector(".delete-btn").onclick = () => requestArchive(member.id, li);
 
     
+
     const proofBtn = li.querySelector(".proof-toggle-btn");
     const proofContainer = li.querySelector(".proof-container");
     if (proofBtn && proofContainer) {
@@ -450,8 +480,11 @@ async function loadActivatedMembers() {
   if (!list || !total || !ADMIN_TOKEN) return;
 
   list.innerHTML = "";
+  renderActivatedTeamLeaderFilters();
 
-  const res = await fetch("/clients/activated", {
+  const query = selectedActivatedFilter ? `?teamLeader=${encodeURIComponent(selectedActivatedFilter)}` : "";
+  
+  const res = await fetch(`/clients/activated${query}`, {
     headers: { "x-admin-token": ADMIN_TOKEN }
   });
 
@@ -489,7 +522,7 @@ async function loadActivatedMembers() {
     li.innerHTML = `
       <div class="member-info">
         <div class="member-name">${member.full_name}</div>
-        <div class="member-meta">Team Leader: ${member.team_leader || "-"}</div>
+        <div class="member-meta">Team Leader: <button type="button" class="team-leader-member-filter-btn" data-team-leader="${member.team_leader || ""}" ${member.team_leader ? "" : "disabled"}>${member.team_leader || "-"}</button></div>
         <div class="member-meta">Registered: ${formatDate(member.created_at)}</div>
         <div class="member-meta">DSJ Account No: ${member.dsj_number}</div>
         <div class="member-meta">Wallet Address: ${member.wallet_address || "-"}</div>
@@ -501,11 +534,20 @@ async function loadActivatedMembers() {
         ${buildActivationProofSection(member)}
       </div>
       <div class="member-actions">
-        <button class="archive-btn" title="Move to history">Archive User</button>
+        <button class="danger-btn archive-btn" title="Move to history">Archive User</button>
       </div>
     `;
 
     li.querySelector(".archive-btn").onclick = () => requestArchive(member.id, li);
+
+    const teamLeaderFilterBtn = li.querySelector(".team-leader-member-filter-btn");
+    if (teamLeaderFilterBtn && teamLeaderFilterBtn.dataset.teamLeader) {
+      teamLeaderFilterBtn.onclick = async () => {
+        selectedActivatedFilter = teamLeaderFilterBtn.dataset.teamLeader;
+        renderActivatedTeamLeaderFilters();
+        await loadActivatedMembers();
+      };
+    }
 
     const proofBtn = li.querySelector(".proof-toggle-btn");
     const proofContainer = li.querySelector(".proof-container");
@@ -647,6 +689,7 @@ document.getElementById("team-leader-back-btn")?.addEventListener("click", () =>
 document.getElementById("admin-dashboard-back-btn")?.addEventListener("click", () => {
   saveAdminToken(null);
   selectedAdminFilter = "";
+  selectedActivatedFilter = "";
   showPage(landingPage);
 });
 
@@ -657,6 +700,7 @@ document.getElementById("team-leader-dashboard-back-btn")?.addEventListener("cli
 
 document.getElementById("view-activated-btn")?.addEventListener("click", async () => {
   showPage(adminActivatedPage);
+  renderActivatedTeamLeaderFilters();
   await loadActivatedMembers();
 });
 
@@ -666,6 +710,7 @@ document.getElementById("view-history-btn")?.addEventListener("click", async () 
 });
 
 document.getElementById("activated-back-btn")?.addEventListener("click", async () => {
+  selectedActivatedFilter = "";
   showPage(adminPage);
   await loadMembers();
 });
@@ -746,6 +791,7 @@ document.getElementById("admin-login-form")?.addEventListener("submit", async (e
   await fetchTeamLeaders();
   renderTeamLeaderOptions();
   renderTeamLeaderFilters();
+  renderActivatedTeamLeaderFilters();
   showPage(adminPage);
   await loadMembers();
 });
@@ -793,6 +839,7 @@ async function restoreAdminSession() {
   await fetchTeamLeaders();
   renderTeamLeaderOptions();
   renderTeamLeaderFilters();
+  renderActivatedTeamLeaderFilters();
   showPage(adminPage);
   await loadMembers();
   return true;
