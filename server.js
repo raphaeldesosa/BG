@@ -34,7 +34,7 @@ async function initDatabase() {
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_dsj_number_key ON clients(dsj_number)");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_normalized_key ON clients (LOWER(TRIM(wallet_address)))");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_email_normalized_key ON clients (LOWER(TRIM(email)))");
-    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_contact_number_normalized_key ON clients (TRIM(contact_number))");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_contact_number_normalized_key ON clients (BTRIM(contact_number)) WHERE contact_number IS NOT NULL AND BTRIM(contact_number) <> ''");
   } catch (err) {
     console.error("Database initialization warning:", err.message);
   }
