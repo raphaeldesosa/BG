@@ -462,6 +462,19 @@ async function loadActivatedMembers() {
   }
 
   const activatedMembers = await res.json();
+  activatedMembers.sort((a, b) => {
+    const leaderA = (a.team_leader || "").toUpperCase();
+    const leaderB = (b.team_leader || "").toUpperCase();
+    if (leaderA !== leaderB) return leaderA.localeCompare(leaderB);
+
+    const activatedA = a.activated_at ? new Date(a.activated_at).getTime() : 0;
+    const activatedB = b.activated_at ? new Date(b.activated_at).getTime() : 0;
+    if (activatedA !== activatedB) return activatedB - activatedA;
+
+    const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return createdB - createdA;
+  });
   total.textContent = `Activated Members: ${activatedMembers.length}`;
 
   if (!activatedMembers.length) {
@@ -488,11 +501,11 @@ async function loadActivatedMembers() {
         ${buildActivationProofSection(member)}
       </div>
       <div class="member-actions">
-        <button class="delete-btn" title="Move to history">Archive</button>
+        <button class="archive-btn" title="Move to history">Archive User</button>
       </div>
     `;
 
-    li.querySelector(".delete-btn").onclick = () => requestArchive(member.id, li);
+    li.querySelector(".archive-btn").onclick = () => requestArchive(member.id, li);
 
     const proofBtn = li.querySelector(".proof-toggle-btn");
     const proofContainer = li.querySelector(".proof-container");
