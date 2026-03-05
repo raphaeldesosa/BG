@@ -268,7 +268,7 @@ app.get("/clients", requireAdmin, async (req, res) => {
       FROM clients
       WHERE (is_archived = FALSE OR is_archived IS NULL)
         AND ($1 = '' OR team_leader = $1)
-      ORDER BY created_at DESC`,
+      ORDER BY team_leader ASC, created_at DESC`,
       [teamLeaderFilter]
     );
     res.json(result.rows);
@@ -314,7 +314,7 @@ app.get("/clients/activated", requireAdmin, async (req, res) => {
        FROM clients
        WHERE (is_archived = FALSE OR is_archived IS NULL)
          AND is_activated = TRUE
-       ORDER BY activated_at DESC NULLS LAST, created_at DESC`
+       ORDER BY team_leader ASC, activated_at DESC NULLS LAST, created_at DESC`
     );
     res.json(result.rows);
   } catch (err) {

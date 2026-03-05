@@ -487,7 +487,12 @@ async function loadActivatedMembers() {
         ${buildProofSection(member)}
         ${buildActivationProofSection(member)}
       </div>
+      <div class="member-actions">
+        <button class="delete-btn" title="Move to history">Archive</button>
+      </div>
     `;
+
+    li.querySelector(".delete-btn").onclick = () => requestArchive(member.id, li);
 
     const proofBtn = li.querySelector(".proof-toggle-btn");
     const proofContainer = li.querySelector(".proof-container");
@@ -616,7 +621,7 @@ confirmBtn?.addEventListener("click", async () => {
 
   target.card.remove();
 
-  loadMembers();
+  await Promise.all([loadMembers(), loadActivatedMembers()]);
 });
 
 document.getElementById("member-btn")?.addEventListener("click", () => showPage(memberPage));
