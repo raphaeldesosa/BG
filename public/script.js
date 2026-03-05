@@ -64,46 +64,75 @@ function buildProofSection(member) {
   `;
 }
 
-async function toggleProofImage(button, container, member, mode = "admin") {
+function buildActivationProofSection(member) {
+  if (!member.has_activation_proof) return '<div class="member-meta">Activation Proof: Not uploaded</div>';
+
+  return `
+    <div class="member-meta">Activation Proof: <button class="activation-proof-toggle-btn" type="button">View Activation Proof</button></div>
+    <div class="activation-proof-container"></div>
+  `;
+}
+
+async function toBase64(file) {
+  const imageData = await file.arrayBuffer();
+  const bytes = new Uint8Array(imageData);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function toggleProofImage(button, container, member, mode = "admin", options = {}) {
   if (!button || !container) return;
+
+  const {
+    endpoint = "proof",
+    loadingText = "Loading...",
+    errorFallback = "Failed to load proof image.",
+    viewLabel = "View Proof",
+    hideLabel = "Hide Proof",
+    altLabel = "Proof"
+  } = options;
 
   const isVisible = container.dataset.visible === "true";
   if (isVisible) {
     container.innerHTML = "";
     container.dataset.visible = "false";
-    button.textContent = "View Proof";
+    button.textContent = viewLabel;
     return;
   }
 
   if (!container.dataset.loaded) {
     button.disabled = true;
-    button.textContent = "Loading...";
-
-     const headers = {};
+    button.textContent = loadingText;
+     
+    const headers = {};
     if (mode === "teamLeader") {
       headers["x-team-leader-token"] = TEAM_LEADER_TOKEN;
     } else {
       headers["x-admin-token"] = ADMIN_TOKEN;
     }
 
-    const res = await fetch(`/client/${member.id}/proof`, { headers });
-
+    const res = await fetch(`/client/${member.id}/${endpoint}`, { headers });
+    
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: "Failed to load proof image." }));
-      alert(err.error || "Failed to load proof image.");
+      const err = await res.json().catch(() => ({ error: errorFallback }));
+      alert(err.error || errorFallback);
       button.disabled = false;
-      button.textContent = "View Proof";
+      button.textContent = viewLabel;
       return;
     }
 
     const proof = await res.json();
-    container.innerHTML = `<img class="proof-image" src="data:${proof.proof_mime};base64,${proof.proof_image_data}" alt="Proof uploaded by ${member.full_name}">`;
+    container.innerHTML = `<img class="proof-image" src="data:${proof.proof_mime};base64,${proof.proof_image_data}" alt="${altLabel} uploaded by ${member.full_name}">`;
     container.dataset.loaded = "true";
     button.disabled = false;
   }
 
   container.dataset.visible = "true";
-  button.textContent = "Hide Proof";
+  button.textContent = hideLabel;
 }
 
 
@@ -234,13 +263,12 @@ async function loadMembers() {
         <div class="member-meta">Contact: ${member.contact_number}</div>
         <div class="member-meta">Loaned Amount: ₱${Number(member.borrow_amount || 0).toLocaleString()}</div>
         ${buildActivationMeta(member)}
-         ${buildActivationMeta(member)}
         <div class="member-meta">Due: ${member.due_date ? formatDate(member.due_date) : "Starts after activation"}</div>
         ${buildProofSection(member)}
+        ${buildActivationProofSection(member)}
       </div>
         <div class="member-actions">
-        <button class="activate-btn" ${member.is_activated ? "disabled" : ""}>${getActivationLabel(member)}</button>
-        <button class="edit-loan-btn">Edit Loan</button>
+          <button class="edit-loan-btn">Edit Loan</button>
         <button class="delete-btn" title="Move to history">Archive</button>
       </div>
     `;
@@ -254,20 +282,18 @@ async function loadMembers() {
       proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member, "admin");
     }
 
-    li.querySelector(".activate-btn").onclick = async () => {
-      const activateRes = await fetch(`/client/${member.id}/activate`, {
-        method: "PATCH",
-        headers: { "x-admin-token": ADMIN_TOKEN }
+    const activationProofBtn = li.querySelector(".activation-proof-toggle-btn");
+    const activationProofContainer = li.querySelector(".activation-proof-container");
+    if (activationProofBtn && activationProofContainer) {
+      activationProofBtn.onclick = () => toggleProofImage(activationProofBtn, activationProofContainer, member, "admin", {
+        endpoint: "activation-proof",
+        errorFallback: "Failed to load activation proof image.",
+        viewLabel: "View Activation Proof",
+        hideLabel: "Hide Activation Proof",
+        altLabel: "Activation proof"
       });
-
-      if (!activateRes.ok) {
-        alert("Failed to activate member.");
-        return;
-      }
-
-      await loadMembers();
-    };
-
+    }
+      
     li.querySelector(".edit-loan-btn").onclick = async () => {
       const currentAmount = Number(member.borrow_amount || 0);
       const input = prompt(`Enter new loan amount for ${member.full_name}:`, String(currentAmount));
@@ -342,6 +368,11 @@ async function loadTeamLeaderMembers() {
         <div class="member-meta">Email: ${member.email || "-"}</div>
         ${buildActivationMeta(member)}
         ${buildProofSection(member)}
+        ${buildActivationProofSection(member)}
+      </div>
+      <div class="member-actions">
+        <button class="activate-btn" ${member.is_activated ? "disabled" : ""}>${getActivationLabel(member)}</button>
+        <input class="activation-proof-input hidden" type="file" accept="image/jpeg,image/png">
       </div>
     `;
 
@@ -349,6 +380,62 @@ async function loadTeamLeaderMembers() {
     const proofContainer = li.querySelector(".proof-container");
     if (proofBtn && proofContainer) {
       proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member, "teamLeader");
+    }
+
+    const activationProofBtn = li.querySelector(".activation-proof-toggle-btn");
+    const activationProofContainer = li.querySelector(".activation-proof-container");
+    if (activationProofBtn && activationProofContainer) {
+      activationProofBtn.onclick = () => toggleProofImage(activationProofBtn, activationProofContainer, member, "teamLeader", {
+        endpoint: "activation-proof",
+        errorFallback: "Failed to load activation proof image.",
+        viewLabel: "View Activation Proof",
+        hideLabel: "Hide Activation Proof",
+        altLabel: "Activation proof"
+      });
+    }
+
+    const activateBtn = li.querySelector(".activate-btn");
+    const activationProofInput = li.querySelector(".activation-proof-input");
+
+    if (activateBtn && activationProofInput && !member.is_activated) {
+      activateBtn.onclick = () => activationProofInput.click();
+
+      activationProofInput.onchange = async () => {
+        const file = activationProofInput.files?.[0];
+        activationProofInput.value = "";
+
+        if (!file) return;
+        if (!allowedImageTypes.includes(file.type)) {
+          alert("Only JPEG and PNG files are allowed.");
+          return;
+        }
+        if (file.size > maxProofSizeBytes) {
+          alert("Activation proof image must be 2MB or smaller.");
+          return;
+        }
+
+        const base64Proof = await toBase64(file);
+        const activateRes = await fetch(`/team-leader/client/${member.id}/activate`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-team-leader-token": TEAM_LEADER_TOKEN
+          },
+          body: JSON.stringify({
+            proofImageData: base64Proof,
+            proofImageType: file.type
+          })
+        });
+
+        if (!activateRes.ok) {
+          const err = await activateRes.json().catch(() => ({ error: "Failed to activate member." }));
+          alert(err.error || "Failed to activate member.");
+          return;
+        }
+
+        alert("Loan activated successfully.");
+        await loadTeamLeaderMembers();
+      };
     }
 
     list.appendChild(li);
@@ -398,6 +485,7 @@ async function loadActivatedMembers() {
         ${buildActivationMeta(member)}
         <div class="member-meta">Due: ${member.due_date ? formatDate(member.due_date) : "-"}</div>
         ${buildProofSection(member)}
+        ${buildActivationProofSection(member)}
       </div>
     `;
 
@@ -405,6 +493,18 @@ async function loadActivatedMembers() {
     const proofContainer = li.querySelector(".proof-container");
     if (proofBtn && proofContainer) {
       proofBtn.onclick = () => toggleProofImage(proofBtn, proofContainer, member, "admin");
+    }
+    
+    const activationProofBtn = li.querySelector(".activation-proof-toggle-btn");
+    const activationProofContainer = li.querySelector(".activation-proof-container");
+    if (activationProofBtn && activationProofContainer) {
+      activationProofBtn.onclick = () => toggleProofImage(activationProofBtn, activationProofContainer, member, "admin", {
+        endpoint: "activation-proof",
+        errorFallback: "Failed to load activation proof image.",
+        viewLabel: "View Activation Proof",
+        hideLabel: "Hide Activation Proof",
+        altLabel: "Activation proof"
+      });
     }
 
     list.appendChild(li);
@@ -443,6 +543,7 @@ async function loadHistory() {
         <div class="member-meta">Registered: ${formatDate(member.created_at)}</div>
         <div class="member-meta">Archived: ${formatDate(member.archived_at)}</div>
         ${buildProofSection(member)}
+        ${buildActivationProofSection(member)}
       </div>
       <div class="member-actions">
         <button class="danger-btn delete-history-btn" title="Delete permanently">Delete</button>
@@ -564,14 +665,7 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
   if (!allowedImageTypes.includes(proofImage.type)) return alert("Only JPEG and PNG files are allowed.");
   if (proofImage.size > maxProofSizeBytes) return alert("Proof image must be 2MB or smaller.");
 
-  const proofImageData = await proofImage.arrayBuffer();
-  const bytes = new Uint8Array(proofImageData);
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
-  }
-  const base64Proof = btoa(binary);
+  const base64Proof = await toBase64(proofImage);
 
   const firstNameInput = document.getElementById("first_name").value.trim();
   const lastNameInput = document.getElementById("last_name").value.trim();
@@ -599,7 +693,7 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
   });
 
   if (res.ok) {
-    alert("Registration successful! Loan is pending activation by admin.");
+    alert("Registration successful! Loan is pending activation by your team leader.");
     e.target.reset();
     showPage(landingPage);
     return;

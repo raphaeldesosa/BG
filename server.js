@@ -27,6 +27,8 @@ async function initDatabase() {
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS is_activated BOOLEAN DEFAULT FALSE");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ");
+    await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS activation_proof_image BYTEA");
+    await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS activation_proof_mime TEXT");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS team_leader TEXT");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_key ON clients(wallet_address)");
     await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_dsj_number_key ON clients(dsj_number)");
@@ -52,7 +54,7 @@ const TEAM_LEADERS = [
   { username: "leader3", password: "password3", teamLeaderName: "Jundan Favores" },
   { username: "leader4", password: "password4", teamLeaderName: "Liza Ilagan" },
   { username: "leader5", password: "password5", teamLeaderName: "Kyla Ilagan" },
-  { username: "leader6", password: "password6", teamLeaderName: "Elanor Macaballug" },
+  { username: "leader6", password: "password6", teamLeaderName: "Eleanor Macaballug" },
   { username: "leader7", password: "password7", teamLeaderName: "Miguel Valdez" },
   { username: "leader8", password: "password8", teamLeaderName: "Gloria Reyes" }
 ];
@@ -261,7 +263,8 @@ app.get("/clients", requireAdmin, async (req, res) => {
     const result = await pool.query(
       `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, team_leader, borrow_amount, borrow_date, due_date,
       created_at, is_activated, activated_at,
-      (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof
+      (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof,
+      (activation_proof_image IS NOT NULL AND activation_proof_mime IS NOT NULL) AS has_activation_proof
       FROM clients
       WHERE (is_archived = FALSE OR is_archived IS NULL)
         AND ($1 = '' OR team_leader = $1)
@@ -281,7 +284,8 @@ app.get("/team-leader/clients", requireTeamLeader, async (req, res) => {
     const result = await pool.query(
       `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, team_leader, borrow_amount, borrow_date, due_date,
        created_at, is_activated, activated_at,
-       (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof
+       (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof,
+       (activation_proof_image IS NOT NULL AND activation_proof_mime IS NOT NULL) AS has_activation_proof
        FROM clients
        WHERE (is_archived = FALSE OR is_archived IS NULL)
          AND team_leader = $1
@@ -305,7 +309,8 @@ app.get("/clients/activated", requireAdmin, async (req, res) => {
     const result = await pool.query(
        `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, team_leader, borrow_amount, borrow_date, due_date,
        created_at, is_activated, activated_at,
-       (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof
+       (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof,
+       (activation_proof_image IS NOT NULL AND activation_proof_mime IS NOT NULL) AS has_activation_proof
        FROM clients
        WHERE (is_archived = FALSE OR is_archived IS NULL)
          AND is_activated = TRUE
@@ -325,7 +330,8 @@ app.get("/clients/history", requireAdmin, async (req, res) => {
      const result = await pool.query(
       `SELECT id, full_name, email, contact_number, dsj_number, wallet_address, team_leader, borrow_amount, borrow_date, due_date,
        created_at, archived_at, is_activated, activated_at,
-       (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof
+       (proof_image IS NOT NULL AND proof_mime IS NOT NULL) AS has_proof,
+       (activation_proof_image IS NOT NULL AND activation_proof_mime IS NOT NULL) AS has_activation_proof
        FROM clients
        WHERE is_archived = TRUE
        ORDER BY archived_at DESC NULLS LAST, created_at DESC`
@@ -362,6 +368,42 @@ app.get("/client/:id/proof", async (req, res) => {
     }
 
     res.json(client);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+// Get client activation proof image (admin or assigned team leader)
+app.get("/client/:id/activation-proof", async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, full_name, team_leader, activation_proof_mime,
+              encode(activation_proof_image, 'base64') AS proof_image_data
+       FROM clients
+       WHERE id = $1`,
+      [req.params.id]
+    );
+
+    if (!result.rowCount) {
+      return res.status(404).json({ error: "Client not found" });
+    }
+
+    const client = result.rows[0];
+    if (!canViewClientProof(req, client.team_leader)) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    if (!client.activation_proof_mime || !client.proof_image_data) {
+      return res.status(404).json({ error: "Activation proof image not found" });
+    }
+
+    res.json({
+      id: client.id,
+      full_name: client.full_name,
+      proof_mime: client.activation_proof_mime,
+      proof_image_data: client.proof_image_data
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Database error" });
@@ -432,8 +474,32 @@ app.patch("/client/:id/loan", requireAdmin, async (req, res) => {
   }
 });
 
-// Activate member loan (admin only)
-app.patch("/client/:id/activate", requireAdmin, async (req, res) => {
+// Activate member loan (team leader only with activation proof)
+app.patch("/team-leader/client/:id/activate", requireTeamLeader, async (req, res) => {
+  const { proofImageData, proofImageType } = req.body || {};
+
+  if (!proofImageData || !proofImageType) {
+    return res.status(400).json({ error: "Activation proof image is required." });
+  }
+
+  if (!allowedMimeTypes.includes(proofImageType)) {
+    return res.status(400).json({ error: "Only JPEG and PNG files are allowed." });
+  }
+
+  let proofImageBuffer;
+  try {
+    proofImageBuffer = Buffer.from(proofImageData, "base64");
+  } catch (_err) {
+    return res.status(400).json({ error: "Invalid image upload." });
+  }
+
+  if (!proofImageBuffer.length) {
+    return res.status(400).json({ error: "Invalid image upload." });
+  }
+
+  if (proofImageBuffer.length > MAX_PROOF_IMAGE_SIZE) {
+    return res.status(400).json({ error: "Image must be 2MB or smaller." });
+  }
 
   const borrowDate = new Date();
   const dueDate = new Date(borrowDate);
@@ -445,14 +511,18 @@ app.patch("/client/:id/activate", requireAdmin, async (req, res) => {
        SET is_activated = TRUE,
            activated_at = COALESCE(activated_at, $1),
            borrow_date = COALESCE(borrow_date, $1),
-           due_date = COALESCE(due_date, $2)
-       WHERE id = $3
+           due_date = COALESCE(due_date, $2),
+           activation_proof_image = $3,
+           activation_proof_mime = $4
+       WHERE id = $5
+         AND team_leader = $6
+         AND (is_archived = FALSE OR is_archived IS NULL)
        RETURNING id, is_activated, activated_at, borrow_date, due_date`,
-      [borrowDate, dueDate, req.params.id]
+      [borrowDate, dueDate, proofImageBuffer, proofImageType, req.params.id, req.teamLeader.teamLeaderName]
     );
 
     if (!result.rowCount) {
-      return res.status(404).json({ error: "Client not found" });
+      return res.status(404).json({ error: "Client not found under your group." });
     }
 
     res.json({ client: result.rows[0] });
@@ -460,6 +530,11 @@ app.patch("/client/:id/activate", requireAdmin, async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Database error" });
   }
+});
+
+// Admin activation disabled: activation must be done by team leader with proof
+app.patch("/client/:id/activate", requireAdmin, async (_req, res) => {
+  return res.status(403).json({ error: "Only team leaders can activate loans with proof upload." });
 });
 
 
