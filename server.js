@@ -12,6 +12,9 @@ app.use(express.json({ limit: "5mb" }));
 const MAX_PROOF_IMAGE_SIZE = 2 * 1024 * 1024;
 const allowedMimeTypes = ["image/jpeg", "image/png"];
 
+const DSJ_ACCOUNT_LENGTH = 12;
+const WALLET_ADDRESS_LENGTH = 42;
+
 // ------------------- DATABASE -------------------
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -165,6 +168,14 @@ app.post("/client", async (req, res) => {
     return res.status(400).json({ error: "Please select a valid team leader." });
   }
 
+  if (normalizedDsjNumber.length !== DSJ_ACCOUNT_LENGTH) {
+    return res.status(400).json({ error: `DSJ account number must be exactly ${DSJ_ACCOUNT_LENGTH} characters.` });
+  }
+
+  if (normalizedWalletAddress.length !== WALLET_ADDRESS_LENGTH) {
+    return res.status(400).json({ error: `Wallet address must be exactly ${WALLET_ADDRESS_LENGTH} characters.` });
+  }
+  
   if (!allowedMimeTypes.includes(proofImageType)) {
     return res.status(400).json({ error: "Only JPEG and PNG files are allowed." });
   }

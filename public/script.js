@@ -16,6 +16,9 @@ const ADMIN_TOKEN_STORAGE_KEY = "admin_token";
 const TEAM_LEADER_TOKEN_STORAGE_KEY = "team_leader_token";
 const TEAM_LEADER_NAME_STORAGE_KEY = "team_leader_name";
 
+const DSJ_ACCOUNT_LENGTH = 12;
+const WALLET_ADDRESS_LENGTH = 42;
+
 let ADMIN_TOKEN = null;
 let TEAM_LEADER_TOKEN = null;
 let TEAM_LEADER_NAME = null;
@@ -733,9 +736,21 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
   const firstNameInput = document.getElementById("first_name").value.trim();
   const lastNameInput = document.getElementById("last_name").value.trim();
   const teamLeaderInput = document.getElementById("team_leader").value.trim();
+  const dsjNumberInput = document.getElementById("dsj_account").value.trim();
+  const walletAddressInput = document.getElementById("wallet_address").value.trim();
+
 
   if (!firstNameInput || !lastNameInput || !teamLeaderInput) {
     alert("First name, last name, and team leader are required.");
+    return;
+  }
+  if (dsjNumberInput.length !== DSJ_ACCOUNT_LENGTH) {
+    alert(`DSJ Account Number must be exactly ${DSJ_ACCOUNT_LENGTH} characters.`);
+    return;
+  }
+
+  if (walletAddressInput.length !== WALLET_ADDRESS_LENGTH) {
+    alert(`Wallet Address must be exactly ${WALLET_ADDRESS_LENGTH} characters.`);
     return;
   }
 
@@ -747,8 +762,8 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
       lastName: lastNameInput.toUpperCase(),
       contactNumber: document.getElementById("contact").value,
       email: document.getElementById("email").value,
-      dsjNumber: document.getElementById("dsj_account").value,
-      walletAddress: document.getElementById("wallet_address").value,
+      dsjNumber: dsjNumberInput,
+      walletAddress: walletAddressInput,
       teamLeader: teamLeaderInput,
       proofImageData: base64Proof,
       proofImageType: proofImage.type
