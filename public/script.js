@@ -34,7 +34,9 @@ function showPage(page) {
     if (p) p.style.display = "none";
   });
 
-  if (page) page.style.display = "block";
+  if (!page) return;
+
+  page.style.display = page === landingPage ? "flex" : "block";
 }
 
 
