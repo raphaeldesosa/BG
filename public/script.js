@@ -263,9 +263,16 @@ async function loadMembers() {
   list.innerHTML = "";
   const query = selectedAdminFilter ? `?teamLeader=${encodeURIComponent(selectedAdminFilter)}` : "";
 
-  const res = await fetch(`/clients${query}`, {
-    headers: { "x-admin-token": ADMIN_TOKEN }
-  });
+  let res;
+  try {
+    res = await fetch(`/clients${query}`, {
+      headers: { "x-admin-token": ADMIN_TOKEN }
+    });
+  } catch (_err) {
+    list.innerHTML = "<li>Failed to load members. Please check your connection.</li>";
+    total.textContent = "Pending Members: 0";
+    return;
+  }
 
   if (!res.ok) {
     list.innerHTML = "<li>Failed to load members.</li>";
@@ -273,7 +280,8 @@ async function loadMembers() {
     return;
   }
 
-  const members = await res.json();
+  const payload = await res.json().catch(() => []);
+  const members = Array.isArray(payload) ? payload : (Array.isArray(payload.clients) ? payload.clients : []);
   const pendingMembers = members.filter(member => !member.is_activated);
   total.textContent = `Pending Members: ${pendingMembers.length}`;
    
@@ -489,9 +497,16 @@ async function loadActivatedMembers() {
 
   const query = selectedActivatedFilter ? `?teamLeader=${encodeURIComponent(selectedActivatedFilter)}` : "";
   
-  const res = await fetch(`/clients/activated${query}`, {
-    headers: { "x-admin-token": ADMIN_TOKEN }
-  });
+  let res;
+  try {
+    res = await fetch(`/clients/activated${query}`, {
+      headers: { "x-admin-token": ADMIN_TOKEN }
+    });
+  } catch (_err) {
+    list.innerHTML = "<li>Failed to load activated members. Please check your connection.</li>";
+    total.textContent = "Activated Members: 0";
+    return;
+  }
 
   if (!res.ok) {
     list.innerHTML = "<li>Failed to load activated members.</li>";
@@ -499,7 +514,8 @@ async function loadActivatedMembers() {
     return;
   }
 
-  const activatedMembers = await res.json();
+  const payload = await res.json().catch(() => []);
+  const activatedMembers = Array.isArray(payload) ? payload : (Array.isArray(payload.clients) ? payload.clients : []);
   activatedMembers.sort((a, b) => {
     const leaderA = (a.team_leader || "").toUpperCase();
     const leaderB = (b.team_leader || "").toUpperCase();
