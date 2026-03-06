@@ -16,8 +16,32 @@ const DSJ_ACCOUNT_LENGTH = 12;
 const WALLET_ADDRESS_LENGTH = 42;
 
 // ------------------- DATABASE -------------------
+function resolveDatabaseConnectionString(rawConnectionString) {
+  if (!rawConnectionString) return rawConnectionString;
+
+  try {
+    const parsedUrl = new URL(rawConnectionString);
+
+    if (parsedUrl.hostname.startsWith("dpg-") && !parsedUrl.hostname.includes(".")) {
+      const inferredHost = `${parsedUrl.hostname}.oregon-postgres.render.com`;
+      console.warn(
+        "DATABASE_URL host appears to be a Render internal hostname. Using inferred external hostname:",
+        inferredHost
+      );
+      parsedUrl.hostname = inferredHost;
+      return parsedUrl.toString();
+    }
+
+    return rawConnectionString;
+  } catch (_err) {
+    return rawConnectionString;
+  }
+}
+
+const databaseConnectionString = resolveDatabaseConnectionString(process.env.DATABASE_URL);
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: databaseConnectionString,
   ssl: { rejectUnauthorized: false }
 });
 
