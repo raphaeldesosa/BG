@@ -31,11 +31,14 @@ let teamLeadersCache = [];
  *********************************/
 function showPage(page) {
    [landingPage, memberPage, adminLoginPage, teamLeaderLoginPage, adminPage, teamLeaderPage, adminHistoryPage, adminActivatedPage].forEach(p => {
-    if (p) p.style.display = "none";
+    if (!p) return;
+    p.classList.add("hidden");
+    p.style.display = "none";
   });
 
   if (!page) return;
 
+  page.classList.remove("hidden")
   page.style.display = page === landingPage ? "flex" : "block";
 }
 
