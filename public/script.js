@@ -750,7 +750,7 @@ document.getElementById("member-form")?.addEventListener("submit", async (e) => 
   }
 
   if (walletAddressInput.length !== WALLET_ADDRESS_LENGTH) {
-    alert(`Wallet Address must be exactly ${WALLET_ADDRESS_LENGTH} characters.`);
+    alert(`DSJ Wallet Address must be exactly ${WALLET_ADDRESS_LENGTH} characters.`);
     return;
   }
 
