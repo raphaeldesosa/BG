@@ -25,6 +25,33 @@ h2 {
   color: #0f172a;
 }
 
+
+.hidden {
+  display: none !important;
+}
+
+.auth-section {
+  min-height: calc(100vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-card {
+  width: min(520px, 100%);
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 22px 48px rgba(15, 23, 42, 0.1);
+}
+
+.auth-card small {
+  color: #64748b;
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
 input {
   display: block;
   width: 100%;
@@ -260,6 +287,12 @@ button:hover {
   color: #666;
 }
 
+
+#delete-modal .secondary-btn,
+#delete-modal .danger-btn {
+  flex: 1;
+}
+
 .modal-actions {
   display: flex;
   gap: 10px;
@@ -322,6 +355,8 @@ button:hover {
   #landing-page,
   #member-page,
   #admin-login-page,
+  #team-leader-login-page,
+  #team-leader-view,
   #admin-view {
     width: 100%;
     max-width: 100%;
@@ -339,7 +374,12 @@ button:hover {
     padding: 28px 18px;
     border-radius: 16px;
   }
-
+  
+  .auth-card {
+    padding: 22px 16px;
+    border-radius: 16px;
+  }
+  
   h1 {
     font-size: 24px;
   }

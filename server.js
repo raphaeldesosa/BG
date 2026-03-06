@@ -23,6 +23,20 @@ const pool = new Pool({
 
 async function initDatabase() {
   try {
+     await pool.query(`
+      CREATE TABLE IF NOT EXISTS clients (
+        id SERIAL PRIMARY KEY,
+        full_name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        contact_number TEXT NOT NULL,
+        dsj_number TEXT NOT NULL,
+        borrow_amount NUMERIC DEFAULT 100,
+        borrow_date TIMESTAMPTZ,
+        due_date TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS wallet_address TEXT");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS proof_image BYTEA");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS proof_mime TEXT");

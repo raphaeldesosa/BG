@@ -5,21 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CC JADI</title>
   <link rel="stylesheet" href="style.css">
-  <style>
- 
-    .hidden { display: none; }
-    #delete-modal {
-      position: fixed;
-      background: #fff;
-      border: 1px solid #ccc;
-      padding: 15px;
-      top: 30%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 1000;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
-    }
-  </style>
+  
 </head>
 <body>
 
@@ -28,7 +14,6 @@
      <div class="landing-card">
       <p class="landing-kicker">CC JADI</p>
       <h1>Welcome to CC JADI Members System</h1>
-      <p class="landing-subtitle">Manage registrations and member access in one place.</p>
       <button id="member-btn">Register as Member</button>
       <button id="admin-btn">Admin Login</button>
       <button id="team-leader-btn">Team Leader Login</button>
@@ -36,7 +21,8 @@
   </div>
 
 
-  <div id="member-page" class="hidden">
+  <div id="member-page" class="hidden auth-section">
+    <div class="auth-card">
     <h2>Member Registration</h2>
     <form id="member-form">
       <input id="first_name" placeholder="First Name" required style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"><br>
@@ -53,10 +39,12 @@
       <button type="submit">Register</button>
       <button type="button" id="member-back-btn">Back</button>
     </form>
+    </div>
   </div>
 
  
-  <div id="admin-login-page" class="hidden">
+  <div id="admin-login-page" class="hidden auth-section">
+    <div class="auth-card">
     <h2>Admin Login</h2>
     <form id="admin-login-form">
       <input id="admin-username" placeholder="Username" required><br>
@@ -65,9 +53,11 @@
       <button type="button" id="admin-back-btn">Back</button>
     </form>
     <div id="admin-msg" style="color:red;margin-top:5px;"></div>
+    </div>
   </div>
 
-  <div id="team-leader-login-page" class="hidden">
+  <div id="team-leader-login-page" class="hidden auth-section">
+    <div class="auth-card">
     <h2>Team Leader Login</h2>
     <form id="team-leader-login-form">
       <input id="team-leader-username" placeholder="Username" required><br>
@@ -76,6 +66,7 @@
       <button type="button" id="team-leader-back-btn">Back</button>
     </form>
     <div id="team-leader-msg" style="color:red;margin-top:5px;"></div>
+    </div>
   </div>
 
  
@@ -111,10 +102,15 @@
     <ul id="history-list"></ul>
   </div>
 
-  <div id="delete-modal" class="hidden">
-    <p>Move this member to history?</p>
-    <button id="confirm-delete">Yes</button>
-    <button id="cancel-delete">No</button>
+  <div id="delete-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title">
+    <div class="modal-content">
+      <h3 id="delete-modal-title">Archive Member</h3>
+      <p>Move this member to history?</p>
+      <div class="modal-actions">
+        <button id="confirm-delete" class="danger-btn">Yes, Archive</button>
+        <button id="cancel-delete" class="secondary-btn">Cancel</button>
+      </div>
+    </div>
   </div>
   
   <script src="script.js"></script>
