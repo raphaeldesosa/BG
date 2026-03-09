@@ -71,11 +71,15 @@ async function initDatabase() {
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS activation_proof_image BYTEA");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS activation_proof_mime TEXT");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS team_leader TEXT");
-    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_key ON clients(wallet_address)");
-    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_dsj_number_key ON clients(dsj_number)");
-    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_normalized_key ON clients (LOWER(TRIM(wallet_address)))");
-    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_email_normalized_key ON clients (LOWER(TRIM(email)))");
-    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_contact_number_normalized_key ON clients (BTRIM(contact_number)) WHERE contact_number IS NOT NULL AND BTRIM(contact_number) <> ''");
+    await pool.query("DROP INDEX IF EXISTS clients_wallet_address_key");
+    await pool.query("DROP INDEX IF EXISTS clients_dsj_number_key");
+    await pool.query("DROP INDEX IF EXISTS clients_wallet_address_normalized_key");
+    await pool.query("DROP INDEX IF EXISTS clients_email_normalized_key");
+    await pool.query("DROP INDEX IF EXISTS clients_contact_number_normalized_key");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_wallet_address_normalized_key ON clients (LOWER(TRIM(wallet_address))) WHERE (is_archived = FALSE OR is_archived IS NULL) AND wallet_address IS NOT NULL AND BTRIM(wallet_address) <> ''");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_dsj_number_key ON clients (BTRIM(dsj_number)) WHERE (is_archived = FALSE OR is_archived IS NULL) AND dsj_number IS NOT NULL AND BTRIM(dsj_number) <> ''");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_email_normalized_key ON clients (LOWER(TRIM(email))) WHERE (is_archived = FALSE OR is_archived IS NULL) AND email IS NOT NULL AND BTRIM(email) <> ''");
+    await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS clients_contact_number_normalized_key ON clients (BTRIM(contact_number)) WHERE (is_archived = FALSE OR is_archived IS NULL) AND contact_number IS NOT NULL AND BTRIM(contact_number) <> ''");
   } catch (err) {
     console.error("Database initialization warning:", err.message);
   }
