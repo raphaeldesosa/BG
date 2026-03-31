@@ -11,6 +11,7 @@ app.use(express.json({ limit: "5mb" }));
 
 const MAX_PROOF_IMAGE_SIZE = 2 * 1024 * 1024;
 const allowedMimeTypes = ["image/jpeg", "image/png"];
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const DSJ_ACCOUNT_LENGTH = 12;
 const WALLET_ADDRESS_LENGTH = 42;
@@ -71,6 +72,8 @@ async function initDatabase() {
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS activation_proof_image BYTEA");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS activation_proof_mime TEXT");
     await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS team_leader TEXT");
+    await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS due_reminder_sent_at TIMESTAMPTZ");
+    await pool.query("ALTER TABLE clients ADD COLUMN IF NOT EXISTS due_reminder_for_due_date DATE");
     await pool.query("DROP INDEX IF EXISTS clients_wallet_address_key");
     await pool.query("DROP INDEX IF EXISTS clients_dsj_number_key");
     await pool.query("DROP INDEX IF EXISTS clients_wallet_address_normalized_key");
@@ -83,6 +86,103 @@ async function initDatabase() {
   } catch (err) {
     console.error("Database initialization warning:", err.message);
   }
+}
+
+const reminderEmailApiUrl = (process.env.REMINDER_EMAIL_API_URL || "").trim();
+const reminderEmailApiKey = (process.env.REMINDER_EMAIL_API_KEY || "").trim();
+let reminderJobIsRunning = false;
+
+function formatReminderDueDate(dueDate) {
+  return new Date(dueDate).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric"
+  });
+}
+
+async function sendDueSoonReminders() {
+  const summary = {
+    attempted: 0,
+    sent: 0,
+    failed: 0,
+    skippedReason: null
+  };
+
+  if (!reminderEmailApiUrl) {
+    summary.skippedReason = "missing REMINDER_EMAIL_API_URL";
+    return summary;
+  }
+
+  if (typeof fetch !== "function") {
+    summary.skippedReason = "fetch is not available in this Node runtime";
+    return summary;
+  }
+
+  if (reminderJobIsRunning) {
+    summary.skippedReason = "reminder job is already running";
+    return summary;
+  }
+
+  reminderJobIsRunning = true;
+
+  try {
+    const dueSoonClients = await pool.query(
+      `SELECT id, full_name, email, due_date
+       FROM clients
+       WHERE (is_archived = FALSE OR is_archived IS NULL)
+         AND is_activated = TRUE
+         AND email IS NOT NULL
+         AND BTRIM(email) <> ''
+         AND due_date IS NOT NULL
+         AND due_date::date = (CURRENT_DATE + INTERVAL '7 day')::date
+         AND (due_reminder_for_due_date IS NULL OR due_reminder_for_due_date <> due_date::date)`
+    );
+
+    for (const client of dueSoonClients.rows) {
+      summary.attempted += 1;
+      const readableDueDate = formatReminderDueDate(client.due_date);
+
+      try {
+        const response = await fetch(reminderEmailApiUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(reminderEmailApiKey ? { Authorization: `Bearer ${reminderEmailApiKey}` } : {})
+          },
+          body: JSON.stringify({
+            to: client.email,
+            subject: "Loan due date reminder",
+            text: `Hi ${client.full_name}, this is a reminder that your loan is due on ${readableDueDate}.`,
+            html: `<p>Hi ${client.full_name},</p><p>This is a reminder that your loan is due on <strong>${readableDueDate}</strong>.</p>`,
+            dueDate: client.due_date
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`Reminder API failed with HTTP ${response.status}`);
+        }
+
+        await pool.query(
+          `UPDATE clients
+           SET due_reminder_sent_at = NOW(),
+               due_reminder_for_due_date = due_date::date
+           WHERE id = $1`,
+          [client.id]
+        );
+        summary.sent += 1;
+      } catch (err) {
+        summary.failed += 1;
+        console.error(`Failed to send reminder for client ${client.id}:`, err.message);
+      }
+    }
+  } catch (err) {
+    summary.skippedReason = `query failed: ${err.message}`;
+    console.error("Loan reminder job failed:", err.message);
+  } finally {
+    reminderJobIsRunning = false;
+  }
+
+  return summary;
 }
 
 // ------------------- ADMIN AUTH -------------------
@@ -291,6 +391,11 @@ app.post("/admin/login", (req, res) => {
   }
 
   return res.status(401).json({ error: "Invalid credentials" });
+});
+
+app.post("/admin/reminders/run", requireAdmin, async (_req, res) => {
+  const result = await sendDueSoonReminders();
+  res.json({ reminderRun: result });
 });
 
 // Team leader login
@@ -604,5 +709,10 @@ app.get("*", (req, res) => {
 // Start server
 const PORT = process.env.PORT || 3000;
 initDatabase().finally(() => {
+  if (!reminderEmailApiUrl) {
+    console.warn("Loan reminder email is disabled: missing REMINDER_EMAIL_API_URL.");
+  }
+  sendDueSoonReminders();
+  setInterval(sendDueSoonReminders, ONE_WEEK_MS / 14);
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 });
